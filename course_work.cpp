@@ -101,7 +101,7 @@ void Pizzeria::complete_order() {
 	}
 }
 
-Employee::Employee(std::string name, bool free) : name(name) {}
+Employee::Employee(std::string name, bool free) : name(name), free(free) {}
 
 void Employee::doWork(const Order& o) {
 	free = false;
