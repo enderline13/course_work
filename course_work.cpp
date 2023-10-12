@@ -11,10 +11,12 @@ class Pizza;
 
 class Pizzeria {
 public:
-	void addWorker(const Employee& e) {
+	void addEmployee(const Employee& e) {
 		workers.push_back(e);
 	}
+	void addPizza();
 private:
+	std::vector<Pizza> availablePizzas;
 	std::vector<Employee> workers;
 	std::stack<Order> current_orders;
 };
@@ -29,7 +31,7 @@ private:
 class Client {
 public:
 	void makeOrder(const Pizzeria& p) {
-		std::cout << "Enter your pizzas" << std::endl;
+		std::cout << "Enter your pizzas:\n 1 - pepperoni" << std::endl;
 
 	}
 private:
@@ -50,7 +52,7 @@ private:
 	double price;
 };
 
-class Order{
+class Order {
 public:
 	double getOrderPrice() {
 		double sum = 0;
@@ -61,7 +63,7 @@ public:
 	}
 private:
 	std::vector<Pizza> pizzas;
-}
+};
 
 
 
