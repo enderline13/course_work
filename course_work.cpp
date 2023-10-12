@@ -11,7 +11,9 @@ class Pizza;
 
 class Pizzeria {
 public:
-
+	void addWorker(const Employee& e) {
+		workers.push_back(e);
+	}
 private:
 	std::vector<Employee> workers;
 	std::stack<Order> current_orders;
@@ -22,12 +24,14 @@ public:
 
 private:
 	std::string name;
-	
 };
 
 class Client {
 public:
+	void makeOrder(const Pizzeria& p) {
+		std::cout << "Enter your pizzas" << std::endl;
 
+	}
 private:
 	std::string name;
 	std::string address;
@@ -67,6 +71,7 @@ private:
 
 int main()
 {
-	
+	Pizzeria dodo;
+
 }
 
