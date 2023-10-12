@@ -11,10 +11,12 @@ class Pizza;
 
 class Pizzeria {
 public:
-	void addEmployee(const Employee& e) {
-		workers.push_back(e);
+	void addEmployee(std::string name) {
+		workers.emplace_back(name);
 	}
-	void addPizza();
+	void addPizza(std::string name, double price) {
+		availablePizzas.emplace_back(name, price);
+	}
 private:
 	std::vector<Pizza> availablePizzas;
 	std::vector<Employee> workers;
@@ -47,9 +49,13 @@ public:
 	double getPrice() {
 		return price;
 	}
+	int getAmount() {
+		return amount;
+	}
 private:
-	std::string pizza_type;
+	std::string pizza_type;û
 	double price;
+	int amount = 1;
 };
 
 class Order {
@@ -57,7 +63,7 @@ public:
 	double getOrderPrice() {
 		double sum = 0;
 		for (auto now : pizzas) {
-			sum += now.getPrice();
+			sum += now.getPrice() * now.getAmount();
 		}
 		return sum;
 	}
