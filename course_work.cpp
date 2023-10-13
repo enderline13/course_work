@@ -73,7 +73,6 @@ int main()
 	dodo.addPizza("Chicken barbecue", 18.2);
 	Client william("William Smith", "Grey street 22");
 	william.makeOrder(dodo);
-
 }
 
 
