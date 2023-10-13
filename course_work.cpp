@@ -113,6 +113,17 @@ bool Employee::isFree() const {
 
 Client::Client(std::string n, std::string ad) : name(n), address(ad) {}
 
+int inputInt(std::string prompt, int m = 1, int M = 1000) {
+	int N;
+	std::cout << prompt << " (From " << m << " to " << M << "): ";
+	if (!(std::cin >> N) || !(m <= N) || !(N <= M)) {
+		std::cin.clear();
+		std::cin.ignore(100, '\n');
+		throw std::invalid_argument("Invalid number.");
+	}
+	return N;
+}
+
 void Client::makeOrder(Pizzeria& p) const {
 	Order this_order;
 	std::cout << "Choose your pizza: " << std::endl;
@@ -122,13 +133,15 @@ void Client::makeOrder(Pizzeria& p) const {
 		for (int i = 0; i < menu.size(); i++) {
 			std::cout << i + 1 << " " << menu[i].getType() << " " << menu[i].getPrice() << std::endl;
 		}
-		int pizza_number;
-		int amount;
-		std::cout << "Enter number of your pizza: ";
-		std::cin >> pizza_number;
-		std::cout << "Enter amount: ";
-		std::cin >> amount;
-		this_order.addPizza(menu[pizza_number - 1].getType(), menu[pizza_number - 1].getPrice(), amount);
+		try {
+			int pizza_number = inputInt("Enter number of your pizza", 1, menu.size());
+			int amount = inputInt("Enter amount", 1);
+			this_order.addPizza(menu[pizza_number - 1].getType(), menu[pizza_number - 1].getPrice(), amount);
+		}
+		catch (const std::invalid_argument& e) {
+			std::cout << e.what() << ". Enter correct number.\n";
+			continue;
+		}
 		std::cout << "Wanna add more? y/n" << std::endl;
 		std::cin >> c;
 	}
@@ -139,6 +152,7 @@ void Client::makeOrder(Pizzeria& p) const {
 	std::cout << "Your order is ready" << std::endl;
 	std::cout << "It will be delivered to: " << this->name << ". Address: " << this->address << std::endl;
 }
+
 
 Pizza::Pizza(std::string type, double price, int amount) : pizza_type(type), price(price), amount(amount) {}
 
