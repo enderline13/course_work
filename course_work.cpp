@@ -56,7 +56,7 @@ public:
 private:
 	std::string pizza_type;
 	double price;
-	int amount ;
+	unsigned int amount;
 };
 
 
