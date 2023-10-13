@@ -7,6 +7,8 @@ class Employee;
 class Order;
 class Pizza;
 
+int inputInt(std::string prompt, int m = 1, int M = 1000);
+
 class Order {
 public:
 	double getOrderPrice() const;
@@ -102,7 +104,7 @@ Employee::Employee(std::string name, bool free) : name(name), free(free) {}
 
 void Employee::doWork(const Order& o) {
 	free = false;
-	std::cout << "Worker is working" << std::endl;
+	std::cout << "Worker " << this->name << " is working" << std::endl;
 	std::cout << "Worker has finished" << std::endl;
 	free = true;
 }
@@ -113,7 +115,7 @@ bool Employee::isFree() const {
 
 Client::Client(std::string n, std::string ad) : name(n), address(ad) {}
 
-int inputInt(std::string prompt, int m = 1, int M = 1000) {
+int inputInt(std::string prompt, int m, int M) {
 	int N;
 	std::cout << prompt << " (From " << m << " to " << M << "): ";
 	if (!(std::cin >> N) || !(m <= N) || !(N <= M)) {
