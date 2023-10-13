@@ -62,11 +62,6 @@ private:
 
 
 
-
-
-
-
-
 int main()
 {
 	Pizzeria dodo;
@@ -81,6 +76,7 @@ int main()
 
 }
 
+
 void Pizzeria::addEmployee(std::string name) {
 	workers.emplace_back(name);
 }
@@ -94,10 +90,12 @@ std::vector<Pizza> Pizzeria::getPizzasAvailable() const {
 	return availablePizzas;
 }
 void Pizzeria::complete_order() {
-	for (Employee worker : workers) {
-		if (worker.isFree()) worker.doWork(current_orders.top());
-		current_orders.pop();
-		break;
+	while (!current_orders.empty()) {
+		for (Employee worker : workers) {
+			if (worker.isFree()) worker.doWork(current_orders.top());
+			current_orders.pop();
+			break;
+		}
 	}
 }
 
@@ -109,11 +107,13 @@ void Employee::doWork(const Order& o) {
 	std::cout << "Worker has finished" << std::endl;
 	free = true;
 }
+
 bool Employee::isFree() const {
 	return free;
 }
 
 Client::Client(std::string n, std::string ad) : name(n), address(ad) {}
+
 void Client::makeOrder(Pizzeria& p) const {
 	Order this_order;
 	std::cout << "Choose your pizza: " << std::endl;
@@ -138,11 +138,10 @@ void Client::makeOrder(Pizzeria& p) const {
 	std::cout << "Your order is now in work" << std::endl;
 	p.complete_order();
 	std::cout << "Your order is ready" << std::endl;
-	std::cout << "It will be delivered to: " << this->name << " on address: " << this->address << std::endl;
+	std::cout << "It will be delivered to: " << this->name << ". Address: " << this->address << std::endl;
 }
 
-Pizza::Pizza(std::string type, double price, int amount) : pizza_type(type), price(price), amount(amount) 
-	{}
+Pizza::Pizza(std::string type, double price, int amount) : pizza_type(type), price(price), amount(amount) {}
 
 std::string Pizza::getType() const {
 	return pizza_type;
@@ -161,6 +160,7 @@ double Order::getOrderPrice() const {
 	}
 	return sum;
 }
+
 void Order::addPizza(std::string name, double price, int amount) {
 	pizzas.emplace_back(name, price, amount);
 }
