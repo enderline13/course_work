@@ -17,7 +17,7 @@ private:
 	std::vector<Pizza> pizzas;
 };
 
-class Pizzeria {
+class PizzeriaDB {
 public:
 	void addEmployee(std::string name);
 	void addPizza(std::string name, double price);
@@ -40,15 +40,6 @@ private:
 	bool free;
 };
 
-class Client {
-public:
-	Client(std::string n, std::string ad);
-	void makeOrder(Pizzeria& p) const;
-private:
-	std::string name;
-	std::string address;
-};
-
 class Pizza {
 public:
 	Pizza(std::string type, double price, int amount = 1);
@@ -61,36 +52,59 @@ private:
 	unsigned int amount;
 };
 
+class User {
+public:
+	User(std::string l, std::string p);
+	virtual void MainMenu() = 0;
+private:
+	std::string login;
+	std::string password;
+};
+
+class Client : public User{
+public:
+	Client(std::string n, std::string ad);
+	void makeOrder(PizzeriaDB& p) const;
+	void MainMenu();
+private:
+	std::string name;
+	std::string address;
+};
+
+class Admin : public User {
+public:
+	void MainMenu();
+}; 
+
+class UsersDB {
+private:
+	
+};
+
 
 
 
 int main()
 {
-	Pizzeria dodo;
-	dodo.addEmployee("Jack");
-	dodo.addEmployee("Bill");
-	dodo.addEmployee("Gustav");
-	dodo.addPizza("Margarita", 12.5);
-	dodo.addPizza("Pepperoni", 16);
-	dodo.addPizza("Chicken barbecue", 18.2);
-	Client william("William Smith", "Grey street 22");
-	william.makeOrder(dodo);
+	PizzeriaDB dodo;
+	
 }
 
+User::User(std::string l, std::string p) : login(l), password(p) {}
 
-void Pizzeria::addEmployee(std::string name) {
+void PizzeriaDB::addEmployee(std::string name) {
 	workers.emplace_back(name);
 }
-void Pizzeria::addPizza(std::string name, double price) {
+void PizzeriaDB::addPizza(std::string name, double price) {
 	availablePizzas.emplace_back(name, price);
 }
-void Pizzeria::newOrder(const Order& o) {
+void PizzeriaDB::newOrder(const Order& o) {
 	current_orders.push(o);
 }
-std::vector<Pizza> Pizzeria::getPizzasAvailable() const {
+std::vector<Pizza> PizzeriaDB::getPizzasAvailable() const {
 	return availablePizzas;
 }
-void Pizzeria::complete_order() {
+void PizzeriaDB::complete_order() {
 	while (!current_orders.empty()) {
 		for (Employee worker : workers) {
 			if (worker.isFree()) worker.doWork(current_orders.top());
@@ -126,7 +140,7 @@ int inputInt(std::string prompt, int m, int M) {
 	return N;
 }
 
-void Client::makeOrder(Pizzeria& p) const {
+void Client::makeOrder(PizzeriaDB& p) const {
 	Order this_order;
 	std::cout << "Choose your pizza: " << std::endl;
 	std::vector<Pizza> menu = p.getPizzasAvailable();
