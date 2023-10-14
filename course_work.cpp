@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <queue>
 #include <stack>
 
 class Employee;
@@ -27,7 +28,7 @@ public:
 private:
 	std::vector<Pizza> availablePizzas;
 	std::vector<Employee> workers;
-	std::stack<Order> current_orders;
+	std::queue<Order> current_orders;
 };
 
 class Employee {
@@ -107,7 +108,7 @@ std::vector<Pizza> PizzeriaDB::getPizzasAvailable() const {
 void PizzeriaDB::complete_order() {
 	while (!current_orders.empty()) {
 		for (Employee worker : workers) {
-			if (worker.isFree()) worker.doWork(current_orders.top());
+			if (worker.isFree()) worker.doWork(current_orders.front());
 			current_orders.pop();
 			break;
 		}
