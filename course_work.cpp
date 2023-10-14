@@ -64,7 +64,7 @@ private:
 	std::string password;
 };
 
-class Client : public User{
+class Client : public User {
 public:
 	Client(std::string n, std::string ad);
 	void makeOrder(PizzeriaDB& p) const;
@@ -83,10 +83,11 @@ public:
 
 class UsersDB {
 public:
+	void setAdminData();
 	void newClient(std::string l, std::string p);
-	void newAdmin();
 	bool is_valid(User& u);
 private:
+	std::pair<std::string, std::string> adminData;
 	std::map<std::string, std::string> usersData;
 };
 
@@ -100,6 +101,8 @@ int main()
 
 void authorisation(UsersDB db) {
 	int num;
+	num = inputInt("1 - I'm admin\n2 - I'm user", 1, 2);
+	
 	num = inputInt("1 - sign up\n2 - log in", 1, 2);
 	if (num == 1) {
 		std::string l, p, n, a;;
