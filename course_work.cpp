@@ -83,18 +83,39 @@ public:
 
 class UsersDB {
 public:
+	void newClient(std::string l, std::string p);
+	void newAdmin();
 	bool is_valid(User& u);
 private:
 	std::map<std::string, std::string> usersData;
 };
 
-
-
+void authorisation(UsersDB);
 
 int main()
 {
 	PizzeriaDB dodo;
 	
+}
+
+void authorisation(UsersDB db) {
+	int num;
+	num = inputInt("1 - sign up\n2 - log in", 1, 2);
+	if (num == 1) {
+		std::string l, p, n, a;;
+		std::cout << "Enter login: ";
+		std::cin >> l;
+		std::cout << "Enter password: ";
+		std::cin >> p;
+		std::cout << "Enter your name: ";
+		std::cin >> n;
+		std::cout << "Enter address: ";
+		std::cin >> a;
+
+
+
+
+	}
 }
 
 std::string User::GetLogin() {
