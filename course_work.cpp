@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 #include <queue>
-#include <stack>
+#include <map>
 
 class Employee;
 class Order;
@@ -55,6 +55,8 @@ private:
 
 class User {
 public:
+	std::string GetLogin();
+	std::string GetPassword();
 	User(std::string l, std::string p);
 	virtual void MainMenu() = 0;
 private:
@@ -75,11 +77,15 @@ private:
 class Admin : public User {
 public:
 	void MainMenu();
+	void addEmployee(PizzeriaDB db, std::string name);
+	void addPizza(PizzeriaDB db, std::string name, double price);
 }; 
 
 class UsersDB {
+public:
+	bool is_valid(User& u);
 private:
-	
+	std::map<std::string, std::string> usersData;
 };
 
 
@@ -90,6 +96,27 @@ int main()
 	PizzeriaDB dodo;
 	
 }
+
+std::string User::GetLogin() {
+	return login;
+}
+std::string User::GetPassword() {
+	return password;
+}
+
+bool UsersDB::is_valid(User& u) {
+	if (usersData[u.GetLogin()] == u.GetPassword()) return true;
+	return false;
+}
+
+void Admin::addEmployee(PizzeriaDB db, std::string name) {
+	db.addEmployee(name);
+}
+
+void Admin::addPizza(PizzeriaDB db, std::string name, double price) {
+	db.addPizza(name, price);
+}
+
 
 User::User(std::string l, std::string p) : login(l), password(p) {}
 
