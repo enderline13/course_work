@@ -2,7 +2,6 @@
 #include <string>
 #include <vector>
 #include <queue>
-#include <stack>
 
 class Employee;
 class Order;
@@ -122,7 +121,7 @@ int inputInt(std::string prompt, int m, int M) {
 	if (!(std::cin >> N) || !(m <= N) || !(N <= M)) {
 		std::cin.clear();
 		std::cin.ignore(100, '\n');
-		throw std::invalid_argument("Invalid number.");
+		throw std::invalid_argument("Invalid number");
 	}
 	return N;
 }
