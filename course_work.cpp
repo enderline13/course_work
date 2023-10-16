@@ -8,34 +8,43 @@ class Employee;
 class Order;
 class Pizza;
 
-int inputInt(std::string prompt, int m = 1, int M = 1000);
+int inputInt(const std::string& prompt, int m = 1, int M = 1000);	
 
 class Order {
 public:
 	double getOrderPrice() const;
-	void addPizza(std::string name, double price, int amount = 1);
+	void addPizza(const std::string& name, double price, int amount = 1);
 private:
 	std::vector<Pizza> pizzas;
 };
 
 class PizzeriaDB {
 public:
-	void addEmployee(std::string name);
-	void addPizza(std::string name, double price);
+	void addClient(std::string, std::string);
+	void addEmployee(const std::string& name);
+	void addPizza(const std::string& name, double price);
 	void newOrder(const Order & o);
 	std::vector<Pizza> getPizzasAvailable() const;
 	void complete_order();
+	void setAdminKey(const std::string& s);
+	bool AdminIsValid(const std::string&);
+	bool ClientIsValid(const std::string&, const std::string&);
+	void deletePizza(const std::string& s);
+	void deleteEmployee(const std::string& s);
 private:
+	std::string AdminKey;
 	std::vector<Pizza> availablePizzas;
 	std::vector<Employee> workers;
 	std::queue<Order> current_orders;
+	std::map<std::string, std::string> clientData;
 };
 
 class Employee {
 public:
-	Employee(std::string name, bool free = true);
+	Employee(const std::string& name, bool free = true);
 	void doWork(const Order& o);
 	bool isFree() const;
+	std::string getName();
 private:
 	std::string name;
 	bool free;
@@ -43,10 +52,11 @@ private:
 
 class Pizza {
 public:
-	Pizza(std::string type, double price, int amount = 1);
+	Pizza(const std::string& type, double price, int amount = 1);
 	std::string getType() const;
 	double getPrice() const;
 	int getAmount() const;
+	std::string getName();
 private:
 	std::string pizza_type;
 	double price;
@@ -55,99 +65,185 @@ private:
 
 class User {
 public:
-	std::string GetLogin();
-	std::string GetPassword();
-	User(std::string l, std::string p);
-	virtual void MainMenu() = 0;
-private:
-	std::string login;
-	std::string password;
+	User() = default;
+	virtual void MainMenu(PizzeriaDB* db) = 0;
 };
 
 class Client : public User {
 public:
-	Client(std::string n, std::string ad);
-	void makeOrder(PizzeriaDB& p) const;
-	void MainMenu();
-private:
-	std::string name;
-	std::string address;
+	Client() = default;
+	void makeOrder(PizzeriaDB* db) const;
+	void MainMenu(PizzeriaDB* db);
 };
 
 class Admin : public User {
 public:
-	void MainMenu();
-	void addEmployee(PizzeriaDB db, std::string name);
-	void addPizza(PizzeriaDB db, std::string name, double price);
+	Admin() = default;
+	void MainMenu(PizzeriaDB* db);
 }; 
 
-class UsersDB {
-public:
-	void setAdminData();
-	void newClient(std::string l, std::string p);
-	bool is_valid(User& u);
-private:
-	std::pair<std::string, std::string> adminData;
-	std::map<std::string, std::string> usersData;
-};
+User* authorisation(PizzeriaDB* db);
 
-void authorisation(UsersDB);
 
 int main()
 {
-	PizzeriaDB dodo;
-	
+	PizzeriaDB* dodo = new PizzeriaDB;
+	dodo->setAdminKey("superadmin");
+	dodo->addPizza("Margarita", 12.6);
+	dodo->addPizza("Pepperoni", 15.1);
+	dodo->addPizza("Chicken barbecue", 18);
+	dodo->addEmployee("John");
+	dodo->addEmployee("Bill");
+	dodo->addEmployee("Ann");
+	User* current_user = authorisation(dodo);
+	current_user->MainMenu(dodo);
+
+
+
+	delete current_user;
+	delete dodo;
 }
 
-void authorisation(UsersDB db) {
-	int num;
-	num = inputInt("1 - I'm admin\n2 - I'm user", 1, 2);
-	
-	num = inputInt("1 - sign up\n2 - log in", 1, 2);
-	if (num == 1) {
-		std::string l, p, n, a;;
-		std::cout << "Enter login: ";
-		std::cin >> l;
-		std::cout << "Enter password: ";
-		std::cin >> p;
-		std::cout << "Enter your name: ";
-		std::cin >> n;
-		std::cout << "Enter address: ";
-		std::cin >> a;
+std::string Employee::getName() {
+	return name;
+}
 
+std::string Pizza::getName() {
+	return pizza_type;
+}
 
+void PizzeriaDB::deletePizza(const std::string& s) {
+	std::erase_if(availablePizzas, [&s](Pizza& p) { return p.getName() == s; });
+}
+void PizzeriaDB::deleteEmployee(const std::string& s) {
+	std::erase_if(workers, [&s](Employee& e) { return e.getName() == s; });
+}
 
-
+void Admin::MainMenu(PizzeriaDB* db) {
+	while (true) {
+		std::cout << "1 - Add pizza\n2 - Delete pizza\n3 - Add employee\n4 - Delete employee\n5 - List of pizzas\n6 - Change admin key\n7 - Exit\n";
+		int num = inputInt("Choose number: ", 1, 7);
+		std::string s;
+		switch (num) {
+		case 1:
+			int p;
+			std::cout << "Enter pizza name: ";
+			std::cin >> s;
+			std::cout << "Enter pizza price: ";
+			std::cin >> p;
+			db->addPizza(s, p);
+			break;
+		case 2:
+			std::cout << "Enter pizza name: ";
+			std::cin >> s;
+			db->deletePizza(s);
+			break;
+		case 3:
+			std::cout << "Enter employee name: ";
+			std::cin >> s;
+			db->addEmployee(s);
+			break;
+		case 4:
+			std::cout << "Enter employee name: ";
+			std::cin >> s;
+			db->deleteEmployee(s);
+			break;
+		case 5: {
+			std::vector<Pizza> menu = db->getPizzasAvailable();
+			for (int i = 0; i < menu.size(); i++) {
+				std::cout << i + 1 << " " << menu[i].getType() << " " << menu[i].getPrice() << std::endl;
+			}
+			break;
+		}
+		case 6:
+			std::cout << "Enter new admin key: ";
+			std::cin >> s;
+			db->setAdminKey(s);
+			break;
+		case 7:
+			exit(0);
+			break;
+		}
 	}
 }
 
-std::string User::GetLogin() {
-	return login;
+void Client::MainMenu(PizzeriaDB* db) {
+	while (true) {
+		std::cout << "1 - Make order\n2 - List of Pizzas\n3 - Exit\n";
+		int num = inputInt("Choose number: ", 1, 3);
+		std::string s;
+		switch (num) {
+		case 1:
+			this->makeOrder(db);
+			break;
+		case 2: {
+			std::vector<Pizza> menu = db->getPizzasAvailable();
+			for (int i = 0; i < menu.size(); i++) {
+				std::cout << i + 1 << " " << menu[i].getType() << " " << menu[i].getPrice() << std::endl;
+			}
+			break;
+		}
+		case 3:
+			exit(0);
+			break;
+		}
+	}
 }
-std::string User::GetPassword() {
-	return password;
+
+bool PizzeriaDB::ClientIsValid(const std::string& l, const std::string& p) {
+	return clientData.contains(l) and clientData[l] == p;
 }
 
-bool UsersDB::is_valid(User& u) {
-	if (usersData[u.GetLogin()] == u.GetPassword()) return true;
-	return false;
+void PizzeriaDB::addClient(std::string l, std::string p) {
+	clientData[l] = p;
 }
 
-void Admin::addEmployee(PizzeriaDB db, std::string name) {
-	db.addEmployee(name);
+bool PizzeriaDB::AdminIsValid(const std::string& s) {
+	return s == AdminKey;
+}
+void PizzeriaDB::setAdminKey(const std::string& s) {
+	AdminKey = s;
 }
 
-void Admin::addPizza(PizzeriaDB db, std::string name, double price) {
-	db.addPizza(name, price);
+User* authorisation(PizzeriaDB* db) {
+	int num;
+	while (true) {
+		num = inputInt("1 - I'm admin\n2 - I'm user\n", 1, 2);
+		if (num == 1) {
+			std::string s;
+			std::cout << "Enter admin access key: ";
+			std::cin >> s;
+			if (db->AdminIsValid(s)) return new Admin;
+			else std::cout << "Wrong key" << std::endl;
+		}
+		else {
+			num = inputInt("1 - sign up\n2 - log in", 1, 2);
+			if (num == 1) {
+				std::string l, p;
+				std::cout << "Enter login: ";
+				std::cin >> l;
+				std::cout << "Enter password: ";
+				std::cin >> p;
+				db->addClient(l, p);
+				return new Client;
+			}
+			else {
+				std::string l, p;
+				std::cout << "Enter login: ";
+				std::cin >> l;
+				std::cout << "Enter password: ";
+				std::cin >> p;
+				if(db->ClientIsValid(l, p)) return new Client;
+				else std::cout << "Wrong login or password" << std::endl;
+			}
+		}
+	}
 }
 
-
-User::User(std::string l, std::string p) : login(l), password(p) {}
-
-void PizzeriaDB::addEmployee(std::string name) {
+void PizzeriaDB::addEmployee(const std::string& name) {
 	workers.emplace_back(name);
 }
-void PizzeriaDB::addPizza(std::string name, double price) {
+void PizzeriaDB::addPizza(const std::string& name, double price) {
 	availablePizzas.emplace_back(name, price);
 }
 void PizzeriaDB::newOrder(const Order& o) {
@@ -166,7 +262,7 @@ void PizzeriaDB::complete_order() {
 	}
 }
 
-Employee::Employee(std::string name, bool free) : name(name), free(free) {}
+Employee::Employee(const std::string& name, bool free) : name(name), free(free) {}
 
 void Employee::doWork(const Order& o) {
 	free = false;
@@ -179,9 +275,7 @@ bool Employee::isFree() const {
 	return free;
 }
 
-Client::Client(std::string n, std::string ad) : name(n), address(ad) {}
-
-int inputInt(std::string prompt, int m, int M) {
+int inputInt(const std::string& prompt, int m, int M) {
 	int N;
 	std::cout << prompt << " (From " << m << " to " << M << "): ";
 	if (!(std::cin >> N) || !(m <= N) || !(N <= M)) {
@@ -192,10 +286,15 @@ int inputInt(std::string prompt, int m, int M) {
 	return N;
 }
 
-void Client::makeOrder(PizzeriaDB& p) const {
+void Client::makeOrder(PizzeriaDB* p) const {
+	std::string name, address;
+	std::cout << "Enter your name: ";
+	std::cin >> name;
+	std::cout << "Enter your address: ";
+	std::cin >> address;
 	Order this_order;
 	std::cout << "Choose your pizza: " << std::endl;
-	std::vector<Pizza> menu = p.getPizzasAvailable();
+	std::vector<Pizza> menu = p->getPizzasAvailable();
 	char c = 'y';
 	while (c == 'y') {
 		for (int i = 0; i < menu.size(); i++) {
@@ -213,16 +312,16 @@ void Client::makeOrder(PizzeriaDB& p) const {
 		std::cout << "Wanna add more? y/n" << std::endl;
 		std::cin >> c;
 	}
-	p.newOrder(this_order);
+	p->newOrder(this_order);
 	std::cout << "Your total is: " << this_order.getOrderPrice() << std::endl;
 	std::cout << "Your order is now in work" << std::endl;
-	p.complete_order();
+	p->complete_order();
 	std::cout << "Your order is ready" << std::endl;
-	std::cout << "It will be delivered to: " << this->name << ". Address: " << this->address << std::endl;
+	std::cout << "It will be delivered to: " << name << ". Address: " << address << std::endl;
 }
 
 
-Pizza::Pizza(std::string type, double price, int amount) : pizza_type(type), price(price), amount(amount) {}
+Pizza::Pizza(const std::string& type, double price, int amount) : pizza_type(type), price(price), amount(amount) {}
 
 std::string Pizza::getType() const {
 	return pizza_type;
@@ -242,6 +341,6 @@ double Order::getOrderPrice() const {
 	return sum;
 }
 
-void Order::addPizza(std::string name, double price, int amount) {
+void Order::addPizza(const std::string& name, double price, int amount) {
 	pizzas.emplace_back(name, price, amount);
 }
