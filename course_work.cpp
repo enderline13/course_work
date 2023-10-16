@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <queue>
+#include <map>
 
 class Employee;
 class Order;
@@ -17,7 +18,7 @@ private:
 	std::vector<Pizza> pizzas;
 };
 
-class Pizzeria {
+class PizzeriaDB {
 public:
 	void addEmployee(std::string name);
 	void addPizza(std::string name, double price);
@@ -40,15 +41,6 @@ private:
 	bool free;
 };
 
-class Client {
-public:
-	Client(std::string n, std::string ad);
-	void makeOrder(Pizzeria& p) const;
-private:
-	std::string name;
-	std::string address;
-};
-
 class Pizza {
 public:
 	Pizza(std::string type, double price, int amount = 1);
@@ -61,36 +53,110 @@ private:
 	unsigned int amount;
 };
 
+class User {
+public:
+	std::string GetLogin();
+	std::string GetPassword();
+	User(std::string l, std::string p);
+	virtual void MainMenu() = 0;
+private:
+	std::string login;
+	std::string password;
+};
 
+class Client : public User {
+public:
+	Client(std::string n, std::string ad);
+	void makeOrder(PizzeriaDB& p) const;
+	void MainMenu();
+private:
+	std::string name;
+	std::string address;
+};
 
+class Admin : public User {
+public:
+	void MainMenu();
+	void addEmployee(PizzeriaDB db, std::string name);
+	void addPizza(PizzeriaDB db, std::string name, double price);
+}; 
+
+class UsersDB {
+public:
+	void setAdminData();
+	void newClient(std::string l, std::string p);
+	bool is_valid(User& u);
+private:
+	std::pair<std::string, std::string> adminData;
+	std::map<std::string, std::string> usersData;
+};
+
+void authorisation(UsersDB);
 
 int main()
 {
-	Pizzeria dodo;
-	dodo.addEmployee("Jack");
-	dodo.addEmployee("Bill");
-	dodo.addEmployee("Gustav");
-	dodo.addPizza("Margarita", 12.5);
-	dodo.addPizza("Pepperoni", 16);
-	dodo.addPizza("Chicken barbecue", 18.2);
-	Client william("William Smith", "Grey street 22");
-	william.makeOrder(dodo);
+	PizzeriaDB dodo;
+	
+}
+
+void authorisation(UsersDB db) {
+	int num;
+	num = inputInt("1 - I'm admin\n2 - I'm user", 1, 2);
+	
+	num = inputInt("1 - sign up\n2 - log in", 1, 2);
+	if (num == 1) {
+		std::string l, p, n, a;;
+		std::cout << "Enter login: ";
+		std::cin >> l;
+		std::cout << "Enter password: ";
+		std::cin >> p;
+		std::cout << "Enter your name: ";
+		std::cin >> n;
+		std::cout << "Enter address: ";
+		std::cin >> a;
+
+
+
+
+	}
+}
+
+std::string User::GetLogin() {
+	return login;
+}
+std::string User::GetPassword() {
+	return password;
+}
+
+bool UsersDB::is_valid(User& u) {
+	if (usersData[u.GetLogin()] == u.GetPassword()) return true;
+	return false;
+}
+
+void Admin::addEmployee(PizzeriaDB db, std::string name) {
+	db.addEmployee(name);
+}
+
+void Admin::addPizza(PizzeriaDB db, std::string name, double price) {
+	db.addPizza(name, price);
 }
 
 
-void Pizzeria::addEmployee(std::string name) {
+User::User(std::string l, std::string p) : login(l), password(p) {}
+
+void PizzeriaDB::addEmployee(std::string name) {
 	workers.emplace_back(name);
 }
-void Pizzeria::addPizza(std::string name, double price) {
+void PizzeriaDB::addPizza(std::string name, double price) {
 	availablePizzas.emplace_back(name, price);
 }
-void Pizzeria::newOrder(const Order& o) {
+void PizzeriaDB::newOrder(const Order& o) {
 	current_orders.push(o);
 }
-std::vector<Pizza> Pizzeria::getPizzasAvailable() const {
+std::vector<Pizza> PizzeriaDB::getPizzasAvailable() const {
 	return availablePizzas;
 }
-void Pizzeria::complete_order() {
+void PizzeriaDB::complete_order() {
 	while (!current_orders.empty()) {
 		for (Employee worker : workers) {
 			if (worker.isFree()) worker.doWork(current_orders.front());
@@ -126,7 +192,7 @@ int inputInt(std::string prompt, int m, int M) {
 	return N;
 }
 
-void Client::makeOrder(Pizzeria& p) const {
+void Client::makeOrder(PizzeriaDB& p) const {
 	Order this_order;
 	std::cout << "Choose your pizza: " << std::endl;
 	std::vector<Pizza> menu = p.getPizzasAvailable();
