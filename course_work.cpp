@@ -187,9 +187,11 @@ Pizza::Pizza(const std::string& type, double price, int amount) : pizza_type(typ
 std::string Pizza::getType() const {
 	return pizza_type;
 }
+
 double Pizza::getPrice() const {
 	return price;
 }
+
 int Pizza::getAmount() const {
 	return amount;
 }
@@ -262,16 +264,17 @@ void Admin::MainMenu(PizzeriaDB* db) {
 		std::string s;
 		switch (num) {
 		case 1:
-			int p;
+			double p;
 			std::cout << "Enter pizza name: ";
-			std::cin >> s;
+			std::cin.ignore();
+			std::getline(std::cin, s);
 			std::cout << "Enter pizza price: ";
 			std::cin >> p;
 			db->addPizza(s, p);
 			break;
 		case 2:
 			std::cout << "Enter pizza name: ";
-			std::cin >> s;
+			std::getline(std::cin, s);
 			db->deletePizza(s);
 			break;
 		case 3:
