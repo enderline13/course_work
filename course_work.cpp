@@ -308,13 +308,15 @@ void Admin::MainMenu(PizzeriaDB* db) {
 
 int inputInt(const std::string& prompt, int m, int M) {
 	int N;
-	std::cout << prompt << " (From " << m << " to " << M << "): ";
-	if (!(std::cin >> N) || !(m <= N) || !(N <= M)) {
-		std::cin.clear();
-		std::cin.ignore(100, '\n');
-		throw std::invalid_argument("Invalid number");
+	while (true) {
+		std::cout << prompt << " (From " << m << " to " << M << "): ";
+		if (!(std::cin >> N) || !(m <= N) || !(N <= M)) {
+			std::cin.clear();
+			std::cin.ignore(100, '\n');
+			std::cout << "Incorrect number" << std::endl;
+		}
+		else return N;
 	}
-	return N;
 }
 
 User* authorisation(PizzeriaDB* db) {
