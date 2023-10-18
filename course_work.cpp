@@ -3,6 +3,7 @@
 #include <vector>
 #include <queue>
 #include <map>
+#include <fstream>
 
 class Employee;
 class Order;
@@ -30,12 +31,14 @@ public:
 	bool ClientIsValid(const std::string&, const std::string&) const;
 	void newOrder(const Order& o);
 	void complete_order();
+	void GetDB();
+	void SaveDB();
 private:
-	std::string AdminKey;
+	std::string AdminKey = "superadmin";
 	std::vector<Pizza> availablePizzas;
 	std::vector<Employee> workers;
-	std::queue<Order> current_orders;
 	std::map<std::string, std::string> clientData;
+	std::queue<Order> current_orders;
 };
 
 class Employee {
@@ -86,21 +89,53 @@ int inputInt(const std::string& prompt, int m = 1, int M = 1000);
 User* authorisation(PizzeriaDB* db);
 
 
+
 int main()
 {
 	PizzeriaDB* dodo = new PizzeriaDB;
-	dodo->setAdminKey("superadmin");
-	dodo->addPizza("Margarita", 12.6);
-	dodo->addPizza("Pepperoni", 15.1);
-	dodo->addPizza("Chicken barbecue", 18);
-	dodo->addEmployee("John");
-	dodo->addEmployee("Bill");
-	dodo->addEmployee("Ann");
+	dodo->GetDB();
 	User* current_user = authorisation(dodo);
 	current_user->MainMenu(dodo);
-
+	dodo->SaveDB();
 	delete current_user;
 	delete dodo;
+}
+/*
+std::string AdminKey;
+std::vector<Pizza> availablePizzas;
+std::vector<Employee> workers;
+std::map<std::string, std::string> clientData;
+*/
+void PizzeriaDB::GetDB() {
+	std::fstream in("AdminKey.bin", std::ios::binary | std::ios::in | std::ios::out);
+	if (!in) std::cout << "bad file";
+	in.read((char*)&AdminKey, sizeof(std::string));
+	in.close();
+	in.open("PizzaCatalogue.bin", std::ios::binary | std::ios::in | std::ios::out);
+	in.read((char*)&availablePizzas, sizeof(std::vector<Pizza>));
+	in.close();
+	in.open("WorkersDB.bin", std::ios::binary | std::ios::in | std::ios::out);
+	in.read((char*)&workers, sizeof(std::vector<Employee>));
+	in.close();
+	in.open("ClientData.bin", std::ios::binary | std::ios::in | std::ios::out);
+	in.read((char*)&clientData, sizeof(std::map<std::string, std::string>));
+	in.close();
+}
+
+void PizzeriaDB::SaveDB() {
+	std::ofstream out("AdminKey.bin", std::ios::binary | std::ios::out);
+	if (!out) std::cout << "bad file";
+	out.write((char*)&AdminKey, sizeof(std::string));
+	out.close();
+	out.open("PizzaCatalogue.bin", std::ios::binary | std::ios::out);
+	out.write((char*)&availablePizzas, sizeof(std::vector<Pizza>));
+	out.close();
+	out.open("WorkersDB.bin", std::ios::binary | std::ios::out);
+	out.write((char*)&workers, sizeof(std::vector<Employee>));
+	out.close();
+	out.open("ClientData.bin", std::ios::binary | std::ios::out);
+	out.write((char*)&clientData, sizeof(std::map<std::string, std::string>));
+	out.close();
 }
 
 double Order::getOrderPrice() const {
