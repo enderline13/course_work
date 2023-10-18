@@ -4,6 +4,7 @@
 #include <queue>
 #include <map>
 #include <fstream>
+#include <memory>
 
 class Employee;
 class Order;
@@ -20,6 +21,7 @@ private:
 
 class PizzeriaDB {
 public:
+	~PizzeriaDB() = default;
 	std::vector<Pizza> getPizzasAvailable() const;
 	void addClient(std::string, std::string);
 	void addEmployee(const std::string& name);
@@ -50,12 +52,13 @@ public:
 	std::string getName() const;
 private:
 	std::string name;
-	bool free;
+	bool free = 1;
 };
 
 class Pizza {
 public:
 	Pizza() = default;
+	~Pizza() {};
 	Pizza(const std::string& type, double price, int amount = 1);
 	std::string getType() const;
 	double getPrice() const;
@@ -63,44 +66,42 @@ public:
 	std::string getName() const;
 private:
 	std::string pizza_type;
-	double price;
-	unsigned int amount;
+	double price = 1;
+	unsigned int amount = 1;
 };
 
 class User {
 public:
 	User() = default;
-	virtual void MainMenu(PizzeriaDB* db) = 0;
+	virtual void MainMenu(std::shared_ptr<PizzeriaDB> db) = 0;
 };
 
 class Client : public User {
 public:
 	Client() = default;
-	void makeOrder(PizzeriaDB* db);
-	void MainMenu(PizzeriaDB* db) override;
+	void makeOrder(std::shared_ptr<PizzeriaDB> p);
+	void MainMenu(std::shared_ptr<PizzeriaDB> db) override;
 };
 
 class Admin : public User {
 public:
 	Admin() = default;
-	void MainMenu(PizzeriaDB* db) override;
+	void MainMenu(std::shared_ptr<PizzeriaDB> db) override;
 }; 
 
 int inputInt(const std::string& prompt, int m = 1, int M = 1000);
 
-User* authorisation(PizzeriaDB* db);
+std::shared_ptr<User> authorisation(std::shared_ptr<PizzeriaDB>);
 
 
 
 int main()
 {
-	PizzeriaDB* dodo = new PizzeriaDB;
+	std::shared_ptr<PizzeriaDB> dodo = std::make_shared<PizzeriaDB>();
 	dodo->GetDB();
-	User* current_user = authorisation(dodo);
+	std::shared_ptr<User> current_user = authorisation(dodo);
 	current_user->MainMenu(dodo);
 	dodo->SaveDB();
-	delete current_user;
-	delete dodo;
 }
 /*
 std::string AdminKey;
@@ -278,7 +279,7 @@ void PizzeriaDB::deleteEmployee(const std::string& s) {
 }
 
 void PizzeriaDB::addPizza(const std::string& name, double price) {
-	availablePizzas.emplace_back(name, price);
+	availablePizzas.emplace_back(name, price, 1);
 }
 
 void PizzeriaDB::deletePizza(const std::string& s) {
@@ -346,7 +347,7 @@ std::string Pizza::getName() const {
 	return pizza_type;
 }
 
-void Client::makeOrder(PizzeriaDB* p) {
+void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
 	std::string name, address;
 	std::cout << "Enter your name: ";
 	std::cin >> name;
@@ -380,7 +381,7 @@ void Client::makeOrder(PizzeriaDB* p) {
 	std::cout << "It will be delivered to: " << name << ". Address: " << address << std::endl;
 }
 
-void Client::MainMenu(PizzeriaDB* db) {
+void Client::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 	while (true) {
 		std::cout << "1 - Make order\n2 - List of Pizzas\n3 - Exit\n";
 		int num = inputInt("Choose number: ", 1, 3);
@@ -403,7 +404,7 @@ void Client::MainMenu(PizzeriaDB* db) {
 	}
 }
 
-void Admin::MainMenu(PizzeriaDB* db) {
+void Admin::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 	while (true) {
 		std::cout << "1 - Add pizza\n2 - Delete pizza\n3 - Add employee\n4 - Delete employee\n5 - List of pizzas\n6 - Change admin key\n7 - Exit\n";
 		int num = inputInt("Choose number: ", 1, 7);
@@ -465,7 +466,7 @@ int inputInt(const std::string& prompt, int m, int M) {
 	}
 }
 
-User* authorisation(PizzeriaDB* db) {
+std::shared_ptr<User> authorisation(std::shared_ptr<PizzeriaDB> db) {
 	int num;
 	while (true) {
 		num = inputInt("1 - I'm admin\n2 - I'm user\n3 - Exit\n", 1, 3);
@@ -473,7 +474,7 @@ User* authorisation(PizzeriaDB* db) {
 			std::string s;
 			std::cout << "Enter admin access key: ";
 			std::cin >> s;
-			if (db->AdminIsValid(s)) return new Admin;
+			if (db->AdminIsValid(s)) return std::make_shared<Admin>();
 			else std::cout << "Wrong key" << std::endl;
 		}
 		else if (num == 2) {
@@ -485,7 +486,7 @@ User* authorisation(PizzeriaDB* db) {
 				std::cout << "Enter password: ";
 				std::cin >> p;
 				db->addClient(l, p);
-				return new Client;
+				return std::make_shared<Client>();
 			}
 			else {
 				std::string l, p;
@@ -493,7 +494,7 @@ User* authorisation(PizzeriaDB* db) {
 				std::cin >> l;
 				std::cout << "Enter password: ";
 				std::cin >> p;
-				if (db->ClientIsValid(l, p)) return new Client;
+				if (db->ClientIsValid(l, p)) return std::make_shared<Client>();
 				else std::cout << "Wrong login or password" << std::endl;
 			}
 		}
