@@ -43,6 +43,7 @@ private:
 
 class Employee {
 public:
+	Employee() = default;
 	Employee(const std::string& name, bool free = true);
 	void doWork(const Order& o);
 	bool isFree() const;
@@ -54,6 +55,7 @@ private:
 
 class Pizza {
 public:
+	Pizza() = default;
 	Pizza(const std::string& type, double price, int amount = 1);
 	std::string getType() const;
 	double getPrice() const;
@@ -107,36 +109,145 @@ std::vector<Employee> workers;
 std::map<std::string, std::string> clientData;
 */
 void PizzeriaDB::GetDB() {
-	std::fstream in("AdminKey.bin", std::ios::binary | std::ios::in | std::ios::out);
-	if (!in) std::cout << "bad file";
-	in.read((char*)&AdminKey, sizeof(std::string));
+	// Чтение AdminKey
+	std::ifstream in("AdminKey.bin", std::ios::binary);
+	if (!in) {
+		std::cout << "Failed to open AdminKey.bin for reading." << std::endl;
+		return;
+	}
+	if (in.peek() == std::ifstream::traits_type::eof()) {
+		// Файл пуст, пропускаем чтение
+		return;
+	}
+	size_t len;
+	in.read((char*)&len, sizeof(size_t));
+	AdminKey.resize(len);
+	in.read(&AdminKey[0], len);
 	in.close();
-	in.open("PizzaCatalogue.bin", std::ios::binary | std::ios::in | std::ios::out);
-	in.read((char*)&availablePizzas, sizeof(std::vector<Pizza>));
+
+	// Чтение PizzaCatalogue
+	in.open("PizzaCatalogue.bin", std::ios::binary);
+	if (!in) {
+		std::cout << "Failed to open PizzaCatalogue.bin for reading." << std::endl;
+		return;
+	}
+	if (in.peek() == std::ifstream::traits_type::eof()) {
+		// Файл пуст, пропускаем чтение
+		return;
+	}
+	size_t pizzaCount;
+	in.read((char*)&pizzaCount, sizeof(size_t));
+	availablePizzas.resize(pizzaCount);
+	for (size_t i = 0; i < pizzaCount; ++i) {
+		in.read((char*)&availablePizzas[i], sizeof(Pizza));
+	}
 	in.close();
-	in.open("WorkersDB.bin", std::ios::binary | std::ios::in | std::ios::out);
-	in.read((char*)&workers, sizeof(std::vector<Employee>));
+
+	// Чтение WorkersDB
+	in.open("WorkersDB.bin", std::ios::binary);
+	if (!in) {
+		std::cout << "Failed to open WorkersDB.bin for reading." << std::endl;
+		return;
+	}
+	if (in.peek() == std::ifstream::traits_type::eof()) {
+		// Файл пуст, пропускаем чтение
+		return;
+	}
+	size_t workerCount;
+	in.read((char*)&workerCount, sizeof(size_t));
+	workers.resize(workerCount);
+	for (size_t i = 0; i < workerCount; ++i) {
+		in.read((char*)&workers[i], sizeof(Employee));
+	}
 	in.close();
-	in.open("ClientData.bin", std::ios::binary | std::ios::in | std::ios::out);
-	in.read((char*)&clientData, sizeof(std::map<std::string, std::string>));
-	in.close();
+
+	// Чтение ClientData
+	in.open("ClientData.bin", std::ios::binary);
+	if (!in) {
+		std::cout << "Failed to open ClientData.bin for reading." << std::endl;
+		return;
+	}
+	if (in.peek() == std::ifstream::traits_type::eof()) {
+		// Файл пуст, пропускаем чтение
+		return;
+	}
+	size_t clientDataSize;
+	in.read((char*)&clientDataSize, sizeof(size_t));
+	clientData.clear();
+	for (size_t i = 0; i < clientDataSize; ++i) {
+		size_t keyLen, valueLen;
+		in.read((char*)&keyLen, sizeof(size_t));
+		std::string key(keyLen, '\0');
+		in.read(&key[0], keyLen);
+
+		in.read((char*)&valueLen, sizeof(size_t));
+		std::string value(valueLen, '\0');
+		in.read(&value[0], valueLen);
+
+		clientData[key] = value;
+	}
 }
 
 void PizzeriaDB::SaveDB() {
-	std::ofstream out("AdminKey.bin", std::ios::binary | std::ios::out);
-	if (!out) std::cout << "bad file";
-	out.write((char*)&AdminKey, sizeof(std::string));
+	// Запись AdminKey
+	std::ofstream out("AdminKey.bin", std::ios::binary);
+	if (!out) {
+		std::cout << "Failed to open AdminKey.bin for writing." << std::endl;
+		return;
+	}
+	size_t len = AdminKey.size();
+	out.write((char*)&len, sizeof(size_t));
+	out.write(AdminKey.c_str(), len);
 	out.close();
-	out.open("PizzaCatalogue.bin", std::ios::binary | std::ios::out);
-	out.write((char*)&availablePizzas, sizeof(std::vector<Pizza>));
+
+	// Запись PizzaCatalogue
+	out.open("PizzaCatalogue.bin", std::ios::binary);
+	if (!out) {
+		std::cout << "Failed to open PizzaCatalogue.bin for writing." << std::endl;
+		return;
+	}
+	size_t pizzaCount = availablePizzas.size();
+	out.write((char*)&pizzaCount, sizeof(size_t));
+	for (const auto& pizza : availablePizzas) {
+		out.write((char*)&pizza, sizeof(Pizza));
+	}
 	out.close();
-	out.open("WorkersDB.bin", std::ios::binary | std::ios::out);
-	out.write((char*)&workers, sizeof(std::vector<Employee>));
+
+	// Запись WorkersDB
+	out.open("WorkersDB.bin", std::ios::binary);
+	if (!out) {
+		std::cout << "Failed to open WorkersDB.bin for writing." << std::endl;
+		return;
+	}
+	size_t workerCount = workers.size();
+	out.write((char*)&workerCount, sizeof(size_t));
+	for (const auto& worker : workers) {
+		out.write((char*)&worker, sizeof(Employee));
+	}
 	out.close();
-	out.open("ClientData.bin", std::ios::binary | std::ios::out);
-	out.write((char*)&clientData, sizeof(std::map<std::string, std::string>));
+
+	// Запись ClientData
+	out.open("ClientData.bin", std::ios::binary);
+	if (!out) {
+		std::cout << "Failed to open ClientData.bin for writing." << std::endl;
+		return;
+	}
+	size_t clientDataSize = clientData.size();
+	out.write((char*)&clientDataSize, sizeof(size_t));
+	for (const auto& entry : clientData) {
+		size_t keyLen = entry.first.size();
+		out.write((char*)&keyLen, sizeof(size_t));
+		out.write(entry.first.c_str(), keyLen);
+
+		size_t valueLen = entry.second.size();
+		out.write((char*)&valueLen, sizeof(size_t));
+		out.write(entry.second.c_str(), valueLen);
+	}
 	out.close();
 }
+
+
+
 
 double Order::getOrderPrice() const {
 	double sum = 0;
@@ -286,7 +397,7 @@ void Client::MainMenu(PizzeriaDB* db) {
 			break;
 		}
 		case 3:
-			exit(0);
+			return;
 			break;
 		}
 	}
@@ -335,7 +446,7 @@ void Admin::MainMenu(PizzeriaDB* db) {
 			db->setAdminKey(s);
 			break;
 		case 7:
-			exit(0);
+			return;
 			break;
 		}
 	}
