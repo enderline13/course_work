@@ -4,7 +4,9 @@
 #include <queue>
 #include <map>
 #include <fstream>
-
+#include <memory>
+#include <atlstr.h>
+#include <ctime>
 class Employee;
 class Order;
 class Pizza;
@@ -20,6 +22,7 @@ private:
 
 class PizzeriaDB {
 public:
+	~PizzeriaDB() = default;
 	std::vector<Pizza> getPizzasAvailable() const;
 	void addClient(std::string, std::string);
 	void addEmployee(const std::string& name);
@@ -50,13 +53,50 @@ public:
 	std::string getName() const;
 private:
 	std::string name;
-	bool free;
+	bool free = 1;
 };
 
 class Pizza {
 public:
-	Pizza() = default;
-	Pizza(const std::string& type, double price, int amount = 1);
+	// Конструктор по умолчанию
+	Pizza() : pizza_type(""), price(1.0), amount(1) {}
+
+	// Конструктор с параметрами
+	Pizza(const std::string& type, double price = 1.0, int amount = 1)
+		: pizza_type(type), price(price), amount(amount) {}
+
+	// Конструктор копирования
+	Pizza(const Pizza& other)
+		: pizza_type(other.pizza_type), price(other.price), amount(other.amount) {}
+
+	// Конструктор перемещения
+	Pizza(Pizza&& other) noexcept
+		: pizza_type(std::move(other.pizza_type)),
+		price(std::exchange(other.price, 0.0)),
+		amount(std::exchange(other.amount, 0)) {}
+
+	// Деструктор (не нужно явно объявлять, используется деструктор по умолчанию)
+	~Pizza() = default;
+
+	// Оператор копирования
+	Pizza& operator=(const Pizza& other) {
+		if (this != &other) {
+			pizza_type = other.pizza_type;
+			price = other.price;
+			amount = other.amount;
+		}
+		return *this;
+	}
+
+	// Оператор перемещения
+	Pizza& operator=(Pizza&& other) noexcept {
+		if (this != &other) {
+			pizza_type = std::move(other.pizza_type);
+			price = std::exchange(other.price, 0.0);
+			amount = std::exchange(other.amount, 0);
+		}
+		return *this;
+	}
 	std::string getType() const;
 	double getPrice() const;
 	int getAmount() const;
@@ -64,53 +104,49 @@ public:
 private:
 	std::string pizza_type;
 	double price;
-	unsigned int amount;
+	int amount;
 };
 
 class User {
 public:
 	User() = default;
-	virtual void MainMenu(PizzeriaDB* db) = 0;
+	virtual void MainMenu(std::shared_ptr<PizzeriaDB> db) = 0;
 };
 
 class Client : public User {
 public:
 	Client() = default;
-	void makeOrder(PizzeriaDB* db);
-	void MainMenu(PizzeriaDB* db) override;
+	void makeOrder(std::shared_ptr<PizzeriaDB> p);
+	void MainMenu(std::shared_ptr<PizzeriaDB> db) override;
 };
 
 class Admin : public User {
 public:
 	Admin() = default;
-	void MainMenu(PizzeriaDB* db) override;
+	void MainMenu(std::shared_ptr<PizzeriaDB> db) override;
 }; 
 
 int inputInt(const std::string& prompt, int m = 1, int M = 1000);
 
-User* authorisation(PizzeriaDB* db);
+std::shared_ptr<User> authorisation(std::shared_ptr<PizzeriaDB>);
 
 
 
 int main()
 {
-	PizzeriaDB* dodo = new PizzeriaDB;
+	std::shared_ptr<PizzeriaDB> dodo = std::make_shared<PizzeriaDB>();
 	dodo->GetDB();
-	User* current_user = authorisation(dodo);
+	
+	std::shared_ptr<User> current_user = authorisation(dodo);
 	current_user->MainMenu(dodo);
 	dodo->SaveDB();
-	delete current_user;
-	delete dodo;
+	return 0;
 }
-/*
-std::string AdminKey;
-std::vector<Pizza> availablePizzas;
-std::vector<Employee> workers;
-std::map<std::string, std::string> clientData;
-*/
+
 void PizzeriaDB::GetDB() {
-	// Чтение AdminKey
-	std::ifstream in("AdminKey.bin", std::ios::binary);
+	
+	//std::ifstream in("PizzaCatalogue.txt", std::ios::binary);
+	/*
 	if (!in) {
 		std::cout << "Failed to open AdminKey.bin for reading." << std::endl;
 		return;
@@ -124,26 +160,34 @@ void PizzeriaDB::GetDB() {
 	AdminKey.resize(len);
 	in.read(&AdminKey[0], len);
 	in.close();
-
+	*/
 	// Чтение PizzaCatalogue
-	in.open("PizzaCatalogue.bin", std::ios::binary);
+	//in.open("PizzaCatalogue", std::ios::binary);
+	std::ifstream in("PizzaCatalogue.txt", std::ios::binary);
 	if (!in) {
-		std::cout << "Failed to open PizzaCatalogue.bin for reading." << std::endl;
+		std::cout << "Failed to open PizzaCatalogue.txt for reading." << std::endl;
 		return;
 	}
 	if (in.peek() == std::ifstream::traits_type::eof()) {
 		// Файл пуст, пропускаем чтение
 		return;
 	}
+	// Чтение pizzaCount
 	size_t pizzaCount;
-	in.read((char*)&pizzaCount, sizeof(size_t));
-	availablePizzas.resize(pizzaCount);
+	in.read(reinterpret_cast<char*>(&pizzaCount), sizeof(size_t));
+
+	std::vector<Pizza> tempPizzas;
+	Pizza tempPizza;
 	for (size_t i = 0; i < pizzaCount; ++i) {
-		in.read((char*)&availablePizzas[i], sizeof(Pizza));
+		in.read(reinterpret_cast<char*>(&tempPizza), sizeof(Pizza));
+		tempPizzas.push_back(tempPizza);
+		break;
 	}
+
+	availablePizzas = tempPizzas; // Присвоить вектору availablePizzas
 	in.close();
 
-	// Чтение WorkersDB
+	/*
 	in.open("WorkersDB.bin", std::ios::binary);
 	if (!in) {
 		std::cout << "Failed to open WorkersDB.bin for reading." << std::endl;
@@ -186,11 +230,12 @@ void PizzeriaDB::GetDB() {
 
 		clientData[key] = value;
 	}
+	*/
 }
 
 void PizzeriaDB::SaveDB() {
-	// Запись AdminKey
-	std::ofstream out("AdminKey.bin", std::ios::binary);
+	//std::ofstream out("PizzaCatalogue.txt", std::ios::binary);
+	/*
 	if (!out) {
 		std::cout << "Failed to open AdminKey.bin for writing." << std::endl;
 		return;
@@ -199,21 +244,26 @@ void PizzeriaDB::SaveDB() {
 	out.write((char*)&len, sizeof(size_t));
 	out.write(AdminKey.c_str(), len);
 	out.close();
-
+	*/
 	// Запись PizzaCatalogue
-	out.open("PizzaCatalogue.bin", std::ios::binary);
+	//out.open("PizzaCatalogue.bin", std::ios::binary);
+	std::ofstream out("PizzaCatalogue.txt", std::ios::binary);
 	if (!out) {
-		std::cout << "Failed to open PizzaCatalogue.bin for writing." << std::endl;
+		std::cout << "Failed to open PizzaCatalogue.txt for writing." << std::endl;
 		return;
 	}
+
+	// Запись pizzaCount
 	size_t pizzaCount = availablePizzas.size();
-	out.write((char*)&pizzaCount, sizeof(size_t));
+	out.write(reinterpret_cast<char*>(&pizzaCount), sizeof(size_t));
+
 	for (const auto& pizza : availablePizzas) {
-		out.write((char*)&pizza, sizeof(Pizza));
+		out.write(reinterpret_cast<const char*>(&pizza), sizeof(Pizza));
 	}
+
 	out.close();
 
-	// Запись WorkersDB
+	/*
 	out.open("WorkersDB.bin", std::ios::binary);
 	if (!out) {
 		std::cout << "Failed to open WorkersDB.bin for writing." << std::endl;
@@ -244,6 +294,7 @@ void PizzeriaDB::SaveDB() {
 		out.write(entry.second.c_str(), valueLen);
 	}
 	out.close();
+	*/
 }
 
 
@@ -278,7 +329,8 @@ void PizzeriaDB::deleteEmployee(const std::string& s) {
 }
 
 void PizzeriaDB::addPizza(const std::string& name, double price) {
-	availablePizzas.emplace_back(name, price);
+	Pizza temp(name, price, 1);
+	availablePizzas.push_back(temp);
 }
 
 void PizzeriaDB::deletePizza(const std::string& s) {
@@ -294,7 +346,7 @@ bool PizzeriaDB::AdminIsValid(const std::string& s) const {
 }
 
 bool PizzeriaDB::ClientIsValid(const std::string& l, const std::string& p) const {
-	return clientData.contains(l) and clientData.at(l) == p;
+	return clientData.at(l) != "" and clientData.at(l) == p;
 }
 
 void PizzeriaDB::newOrder(const Order& o) {
@@ -328,7 +380,7 @@ std::string Employee::getName() const {
 	return name;
 }
 
-Pizza::Pizza(const std::string& type, double price, int amount) : pizza_type(type), price(price), amount(amount) {}
+
 
 std::string Pizza::getType() const {
 	return pizza_type;
@@ -346,7 +398,7 @@ std::string Pizza::getName() const {
 	return pizza_type;
 }
 
-void Client::makeOrder(PizzeriaDB* p) {
+void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
 	std::string name, address;
 	std::cout << "Enter your name: ";
 	std::cin >> name;
@@ -380,7 +432,7 @@ void Client::makeOrder(PizzeriaDB* p) {
 	std::cout << "It will be delivered to: " << name << ". Address: " << address << std::endl;
 }
 
-void Client::MainMenu(PizzeriaDB* db) {
+void Client::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 	while (true) {
 		std::cout << "1 - Make order\n2 - List of Pizzas\n3 - Exit\n";
 		int num = inputInt("Choose number: ", 1, 3);
@@ -403,7 +455,7 @@ void Client::MainMenu(PizzeriaDB* db) {
 	}
 }
 
-void Admin::MainMenu(PizzeriaDB* db) {
+void Admin::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 	while (true) {
 		std::cout << "1 - Add pizza\n2 - Delete pizza\n3 - Add employee\n4 - Delete employee\n5 - List of pizzas\n6 - Change admin key\n7 - Exit\n";
 		int num = inputInt("Choose number: ", 1, 7);
@@ -420,6 +472,7 @@ void Admin::MainMenu(PizzeriaDB* db) {
 			break;
 		case 2:
 			std::cout << "Enter pizza name: ";
+			std::cin.ignore();
 			std::getline(std::cin, s);
 			db->deletePizza(s);
 			break;
@@ -465,7 +518,7 @@ int inputInt(const std::string& prompt, int m, int M) {
 	}
 }
 
-User* authorisation(PizzeriaDB* db) {
+std::shared_ptr<User> authorisation(std::shared_ptr<PizzeriaDB> db) {
 	int num;
 	while (true) {
 		num = inputInt("1 - I'm admin\n2 - I'm user\n3 - Exit\n", 1, 3);
@@ -473,7 +526,7 @@ User* authorisation(PizzeriaDB* db) {
 			std::string s;
 			std::cout << "Enter admin access key: ";
 			std::cin >> s;
-			if (db->AdminIsValid(s)) return new Admin;
+			if (db->AdminIsValid(s)) return std::make_shared<Admin>();
 			else std::cout << "Wrong key" << std::endl;
 		}
 		else if (num == 2) {
@@ -485,7 +538,7 @@ User* authorisation(PizzeriaDB* db) {
 				std::cout << "Enter password: ";
 				std::cin >> p;
 				db->addClient(l, p);
-				return new Client;
+				return std::make_shared<Client>();
 			}
 			else {
 				std::string l, p;
@@ -493,7 +546,7 @@ User* authorisation(PizzeriaDB* db) {
 				std::cin >> l;
 				std::cout << "Enter password: ";
 				std::cin >> p;
-				if (db->ClientIsValid(l, p)) return new Client;
+				if (db->ClientIsValid(l, p)) return std::make_shared<Client>();
 				else std::cout << "Wrong login or password" << std::endl;
 			}
 		}
