@@ -5,8 +5,7 @@
 #include <map>
 #include <fstream>
 #include <memory>
-#include <atlstr.h>
-#include <ctime>
+
 class Employee;
 class Order;
 class Pizza;
@@ -74,45 +73,9 @@ private:
 
 class Pizza {
 public:
-	// Конструктор по умолчанию
-	Pizza() : pizza_type(""), price(1.0), amount(1) {}
-
-	// Конструктор с параметрами
-	Pizza(const std::string& type, double price = 1.0, int amount = 1)
-		: pizza_type(type), price(price), amount(amount) {}
-
-	// Конструктор копирования
-	Pizza(const Pizza& other)
-		: pizza_type(other.pizza_type), price(other.price), amount(other.amount) {}
-
-	// Конструктор перемещения
-	Pizza(Pizza&& other) noexcept
-		: pizza_type(std::move(other.pizza_type)),
-		price(std::exchange(other.price, 0.0)),
-		amount(std::exchange(other.amount, 0)) {}
-
-	// Деструктор (не нужно явно объявлять, используется деструктор по умолчанию)
-	~Pizza() = default;
-
-	// Оператор копирования
-	Pizza& operator=(const Pizza& other) {
-		if (this != &other) {
-			pizza_type = other.pizza_type;
-			price = other.price;
-			amount = other.amount;
-		}
-		return *this;
-	}
-
-	// Оператор перемещения
-	Pizza& operator=(Pizza&& other) noexcept {
-		if (this != &other) {
-			pizza_type = std::move(other.pizza_type);
-			price = std::exchange(other.price, 0.0);
-			amount = std::exchange(other.amount, 0);
-		}
-		return *this;
-	}
+	Pizza() = default;
+	~Pizza() {};
+	Pizza(const std::string& type, double price, int amount = 1);
 	std::string getType() const;
 	double getPrice() const;
 	int getAmount() const;
@@ -137,8 +100,8 @@ public:
 	}
 private:
 	std::string pizza_type;
-	double price;
-	int amount;
+	double price = 1;
+	unsigned int amount = 1;
 };
 
 class User {
@@ -158,7 +121,7 @@ class Admin : public User {
 public:
 	Admin() = default;
 	void MainMenu(std::shared_ptr<PizzeriaDB> db) override;
-}; 
+};
 
 int inputInt(const std::string& prompt, int m = 1, int M = 1000);
 
@@ -170,11 +133,9 @@ int main()
 {
 	std::shared_ptr<PizzeriaDB> dodo = std::make_shared<PizzeriaDB>();
 	dodo->GetDB();
-	
 	std::shared_ptr<User> current_user = authorisation(dodo);
 	current_user->MainMenu(dodo);
 	dodo->SaveDB();
-	return 0;
 }
 /*
 std::string AdminKey;
@@ -263,24 +224,20 @@ void PizzeriaDB::GetDB() {
 	AdminKey.resize(len);
 	in.read(&AdminKey[0], len);
 	in.close();
-	*/
+
 	// Чтение PizzaCatalogue
-	//in.open("PizzaCatalogue", std::ios::binary);
-	std::ifstream in("PizzaCatalogue.txt", std::ios::binary);
+	in.open("PizzaCatalogue.bin", std::ios::binary);
 	if (!in) {
-		std::cout << "Failed to open PizzaCatalogue.txt for reading." << std::endl;
+		std::cout << "Failed to open PizzaCatalogue.bin for reading." << std::endl;
 		return;
 	}
 	if (in.peek() == std::ifstream::traits_type::eof()) {
 		// Файл пуст, пропускаем чтение
 		return;
 	}
-	// Чтение pizzaCount
 	size_t pizzaCount;
-	in.read(reinterpret_cast<char*>(&pizzaCount), sizeof(size_t));
-
-	std::vector<Pizza> tempPizzas;
-	Pizza tempPizza;
+	in.read((char*)&pizzaCount, sizeof(size_t));
+	availablePizzas.resize(pizzaCount);
 	for (size_t i = 0; i < pizzaCount; ++i) {
 		Pizza pizza;
 		size_t typeLen;
@@ -293,11 +250,9 @@ void PizzeriaDB::GetDB() {
 		pizza.SetPrice(price);
 		availablePizzas[i] = pizza;
 	}
-
-	availablePizzas = tempPizzas; // Присвоить вектору availablePizzas
 	in.close();
 
-	/*
+	// Чтение WorkersDB
 	in.open("WorkersDB.bin", std::ios::binary);
 	if (!in) {
 		std::cout << "Failed to open WorkersDB.bin for reading." << std::endl;
@@ -377,7 +332,7 @@ void PizzeriaDB::addClient(std::string l, std::string p) {
 	clientData[l] = p;
 }
 
-void PizzeriaDB::addEmployee(const std::string& name) {	
+void PizzeriaDB::addEmployee(const std::string& name) {
 	Employee employee(name);
 	workers.push_back(employee);
 }
@@ -404,7 +359,7 @@ bool PizzeriaDB::AdminIsValid(const std::string& s) const {
 }
 
 bool PizzeriaDB::ClientIsValid(const std::string& l, const std::string& p) const {
-	return clientData.at(l) != "" and clientData.at(l) == p;
+	return clientData.contains(l) and clientData.at(l) == p;
 }
 
 void PizzeriaDB::newOrder(const Order& o) {
@@ -438,7 +393,7 @@ std::string Employee::getName() const {
 	return name;
 }
 
-
+Pizza::Pizza(const std::string& type, double price, int amount) : pizza_type(type), price(price), amount(amount) {}
 
 std::string Pizza::getType() const {
 	return pizza_type;
@@ -611,9 +566,3 @@ std::shared_ptr<User> authorisation(std::shared_ptr<PizzeriaDB> db) {
 		else if (num == 3) exit(0);
 	}
 }
-
-
-
-
-
-
