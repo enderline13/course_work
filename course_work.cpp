@@ -50,6 +50,22 @@ public:
 	void doWork(const Order& o);
 	bool isFree() const;
 	std::string getName() const;
+	void SetName(const std::string& n) {
+		name = n;
+	}
+
+	void SetFree(bool f) {
+		free = f;
+	}
+
+	// Методы для получения данных
+	const std::string& GetName() const {
+		return name;
+	}
+
+	bool IsFree() const {
+		return free;
+	}
 private:
 	std::string name;
 	bool free = 1;
@@ -64,6 +80,24 @@ public:
 	double getPrice() const;
 	int getAmount() const;
 	std::string getName() const;
+	void SetPizzaType(const std::string& type) {
+		pizza_type = type;
+	}
+	void SetPrice(double p) {
+		price = p;
+	}
+	void SetAmount(unsigned int a) {
+		amount = a;
+	}
+	const std::string& GetPizzaType() const {
+		return pizza_type;
+	}
+	double GetPrice() const {
+		return price;
+	}
+	unsigned int GetAmount() const {
+		return amount;
+	}
 private:
 	std::string pizza_type;
 	double price = 1;
@@ -109,6 +143,71 @@ std::vector<Pizza> availablePizzas;
 std::vector<Employee> workers;
 std::map<std::string, std::string> clientData;
 */
+void PizzeriaDB::SaveDB() {
+	// Запись AdminKey
+	std::ofstream out("AdminKey.bin", std::ios::binary | std::ios::out);
+	if (!out) {
+		std::cout << "Failed to open AdminKey.bin for writing." << std::endl;
+		return;
+	}
+	size_t len = AdminKey.size();
+	out.write((char*)&len, sizeof(size_t));
+	out.write(AdminKey.c_str(), len);
+	out.close();
+
+	// Запись PizzaCatalogue
+	out.open("PizzaCatalogue.bin", std::ios::binary | std::ios::out);
+	if (!out) {
+		std::cout << "Failed to open PizzaCatalogue.bin for writing." << std::endl;
+		return;
+	}
+	size_t pizzaCount = availablePizzas.size();
+	out.write((char*)&pizzaCount, sizeof(size_t));
+	for (const auto& pizza : availablePizzas) {
+		size_t typeLen = pizza.GetPizzaType().size();
+		out.write((char*)&typeLen, sizeof(size_t));
+		const std::string& pizzaType = pizza.GetPizzaType();
+		out.write(pizzaType.c_str(), typeLen);
+		double price = pizza.GetPrice();
+		out.write((char*)&price, sizeof(double));
+	}
+	out.close();
+
+	// Запись WorkersDB
+	out.open("WorkersDB.bin", std::ios::binary | std::ios::out);
+	if (!out) {
+		std::cout << "Failed to open WorkersDB.bin for writing." << std::endl;
+		return;
+	}
+	size_t workerCount = workers.size();
+	out.write((char*)&workerCount, sizeof(size_t));
+	for (const auto& worker : workers) {
+		size_t nameLen = worker.GetName().size();
+		out.write((char*)&nameLen, sizeof(size_t));
+		out.write(worker.GetName().c_str(), nameLen);
+	}
+	out.close();
+
+	// Запись ClientData
+	out.open("ClientData.bin", std::ios::binary | std::ios::out);
+	if (!out) {
+		std::cout << "Failed to open ClientData.bin for writing." << std::endl;
+		return;
+	}
+	size_t clientDataSize = clientData.size();
+	out.write((char*)&clientDataSize, sizeof(size_t));
+	for (const auto& entry : clientData) {
+		size_t keyLen = entry.first.size();
+		out.write((char*)&keyLen, sizeof(size_t));
+		out.write(entry.first.c_str(), keyLen);
+
+		size_t valueLen = entry.second.size();
+		out.write((char*)&valueLen, sizeof(size_t));
+		out.write(entry.second.c_str(), valueLen);
+	}
+	out.close();
+}
+
 void PizzeriaDB::GetDB() {
 	// Чтение AdminKey
 	std::ifstream in("AdminKey.bin", std::ios::binary);
@@ -140,7 +239,16 @@ void PizzeriaDB::GetDB() {
 	in.read((char*)&pizzaCount, sizeof(size_t));
 	availablePizzas.resize(pizzaCount);
 	for (size_t i = 0; i < pizzaCount; ++i) {
-		in.read((char*)&availablePizzas[i], sizeof(Pizza));
+		Pizza pizza;
+		size_t typeLen;
+		in.read((char*)&typeLen, sizeof(size_t));
+		std::string pizzaType(typeLen, '\0');
+		in.read(&pizzaType[0], typeLen);
+		pizza.SetPizzaType(pizzaType);
+		double price;
+		in.read((char*)&price, sizeof(double));
+		pizza.SetPrice(price);
+		availablePizzas[i] = pizza;
 	}
 	in.close();
 
@@ -158,7 +266,16 @@ void PizzeriaDB::GetDB() {
 	in.read((char*)&workerCount, sizeof(size_t));
 	workers.resize(workerCount);
 	for (size_t i = 0; i < workerCount; ++i) {
-		in.read((char*)&workers[i], sizeof(Employee));
+		Employee employee;
+		size_t nameLen;
+		in.read((char*)&nameLen, sizeof(size_t));
+		std::string name(nameLen, '\0');
+		in.read(&name[0], nameLen);
+		employee.SetName(name);
+		bool isFree;
+		in.read((char*)&isFree, sizeof(bool));
+		employee.SetFree(isFree);
+		workers[i] = employee;
 	}
 	in.close();
 
@@ -189,63 +306,8 @@ void PizzeriaDB::GetDB() {
 	}
 }
 
-void PizzeriaDB::SaveDB() {
-	// Запись AdminKey
-	std::ofstream out("AdminKey.bin", std::ios::binary);
-	if (!out) {
-		std::cout << "Failed to open AdminKey.bin for writing." << std::endl;
-		return;
-	}
-	size_t len = AdminKey.size();
-	out.write((char*)&len, sizeof(size_t));
-	out.write(AdminKey.c_str(), len);
-	out.close();
 
-	// Запись PizzaCatalogue
-	out.open("PizzaCatalogue.bin", std::ios::binary);
-	if (!out) {
-		std::cout << "Failed to open PizzaCatalogue.bin for writing." << std::endl;
-		return;
-	}
-	size_t pizzaCount = availablePizzas.size();
-	out.write((char*)&pizzaCount, sizeof(size_t));
-	for (const auto& pizza : availablePizzas) {
-		out.write((char*)&pizza, sizeof(Pizza));
-	}
-	out.close();
 
-	// Запись WorkersDB
-	out.open("WorkersDB.bin", std::ios::binary);
-	if (!out) {
-		std::cout << "Failed to open WorkersDB.bin for writing." << std::endl;
-		return;
-	}
-	size_t workerCount = workers.size();
-	out.write((char*)&workerCount, sizeof(size_t));
-	for (const auto& worker : workers) {
-		out.write((char*)&worker, sizeof(Employee));
-	}
-	out.close();
-
-	// Запись ClientData
-	out.open("ClientData.bin", std::ios::binary);
-	if (!out) {
-		std::cout << "Failed to open ClientData.bin for writing." << std::endl;
-		return;
-	}
-	size_t clientDataSize = clientData.size();
-	out.write((char*)&clientDataSize, sizeof(size_t));
-	for (const auto& entry : clientData) {
-		size_t keyLen = entry.first.size();
-		out.write((char*)&keyLen, sizeof(size_t));
-		out.write(entry.first.c_str(), keyLen);
-
-		size_t valueLen = entry.second.size();
-		out.write((char*)&valueLen, sizeof(size_t));
-		out.write(entry.second.c_str(), valueLen);
-	}
-	out.close();
-}
 
 
 
@@ -270,8 +332,9 @@ void PizzeriaDB::addClient(std::string l, std::string p) {
 	clientData[l] = p;
 }
 
-void PizzeriaDB::addEmployee(const std::string& name) {
-	workers.emplace_back(name);
+void PizzeriaDB::addEmployee(const std::string& name) {	
+	Employee employee(name);
+	workers.push_back(employee);
 }
 
 void PizzeriaDB::deleteEmployee(const std::string& s) {
@@ -279,7 +342,8 @@ void PizzeriaDB::deleteEmployee(const std::string& s) {
 }
 
 void PizzeriaDB::addPizza(const std::string& name, double price) {
-	availablePizzas.emplace_back(name, price, 1);
+	Pizza temp(name, price);
+	availablePizzas.push_back(temp);
 }
 
 void PizzeriaDB::deletePizza(const std::string& s) {
@@ -421,6 +485,7 @@ void Admin::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 			break;
 		case 2:
 			std::cout << "Enter pizza name: ";
+			std::cin.ignore();
 			std::getline(std::cin, s);
 			db->deletePizza(s);
 			break;
