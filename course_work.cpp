@@ -12,16 +12,21 @@ class Pizza;
 
 
 class Order {
+private:
+	std::vector<Pizza> pizzas;
 public:
 	double getOrderPrice() const;
 	void addPizza(const std::string& name, double price, int amount = 1);
-private:
-	std::vector<Pizza> pizzas;
 };
 
 class PizzeriaDB {
+private:
+	std::string AdminKey = "superadmin";
+	std::vector<Pizza> availablePizzas;
+	std::vector<Employee> workers;
+	std::map<std::string, std::string> clientData;
+	std::queue<Order> current_orders;
 public:
-	~PizzeriaDB() = default;
 	std::vector<Pizza> getPizzasAvailable() const;
 	void addClient(std::string, std::string);
 	void addEmployee(const std::string& name);
@@ -33,94 +38,53 @@ public:
 	bool ClientIsValid(const std::string&, const std::string&) const;
 	void newOrder(const Order& o);
 	void complete_order();
-	void GetDB();
-	void SaveDB();
-private:
-	std::string AdminKey = "superadmin";
-	std::vector<Pizza> availablePizzas;
-	std::vector<Employee> workers;
-	std::map<std::string, std::string> clientData;
-	std::queue<Order> current_orders;
+	void getDB();
+	void saveDB();
 };
 
 class Employee {
+private:
+	std::string name;
+	bool free = 1;
 public:
 	Employee() = default;
 	Employee(const std::string& name, bool free = true);
 	void doWork(const Order& o);
 	bool isFree() const;
-	std::string getName() const;
-	void SetName(const std::string& n) {
-		name = n;
-	}
-
-	void SetFree(bool f) {
-		free = f;
-	}
-
-	// Методы для получения данных
-	const std::string& GetName() const {
-		return name;
-	}
-
-	bool IsFree() const {
-		return free;
-	}
-private:
-	std::string name;
-	bool free = 1;
+	void setName(const std::string& n);
+	const std::string& getName() const;
 };
 
 class Pizza {
-public:
-	Pizza() = default;
-	~Pizza() {};
-	Pizza(const std::string& type, double price, int amount = 1);
-	std::string getType() const;
-	double getPrice() const;
-	int getAmount() const;
-	std::string getName() const;
-	void SetPizzaType(const std::string& type) {
-		pizza_type = type;
-	}
-	void SetPrice(double p) {
-		price = p;
-	}
-	void SetAmount(unsigned int a) {
-		amount = a;
-	}
-	const std::string& GetPizzaType() const {
-		return pizza_type;
-	}
-	double GetPrice() const {
-		return price;
-	}
-	unsigned int GetAmount() const {
-		return amount;
-	}
 private:
 	std::string pizza_type;
 	double price = 1;
 	unsigned int amount = 1;
+public:
+	Pizza() = default;
+	Pizza(const std::string& type, double price, int amount = 1);
+	void setPizzaType(const std::string& type);
+	void setPrice(double p);
+	void setAmount(unsigned int a);
+	const std::string& getPizzaType() const;
+	double getPrice() const;
+	unsigned int getAmount() const;
 };
 
 class User {
 public:
-	User() = default;
 	virtual void MainMenu(std::shared_ptr<PizzeriaDB> db) = 0;
 };
 
 class Client : public User {
 public:
-	Client() = default;
 	void makeOrder(std::shared_ptr<PizzeriaDB> p);
-	void MainMenu(std::shared_ptr<PizzeriaDB> db) override;
+	virtual void MainMenu(std::shared_ptr<PizzeriaDB> db) override;
 };
 
 class Admin : public User {
 public:
-	Admin() = default;
-	void MainMenu(std::shared_ptr<PizzeriaDB> db) override;
+	virtual void MainMenu(std::shared_ptr<PizzeriaDB> db) override;
 };
 
 int inputInt(const std::string& prompt, int m = 1, int M = 1000);
@@ -132,18 +96,80 @@ std::shared_ptr<User> authorisation(std::shared_ptr<PizzeriaDB>);
 int main()
 {
 	std::shared_ptr<PizzeriaDB> dodo = std::make_shared<PizzeriaDB>();
-	dodo->GetDB();
+	dodo->getDB();
 	std::shared_ptr<User> current_user = authorisation(dodo);
 	current_user->MainMenu(dodo);
-	dodo->SaveDB();
+	dodo->saveDB();
 }
-/*
-std::string AdminKey;
-std::vector<Pizza> availablePizzas;
-std::vector<Employee> workers;
-std::map<std::string, std::string> clientData;
-*/
-void PizzeriaDB::SaveDB() {
+
+
+
+double Order::getOrderPrice() const {
+	double sum = 0;
+	for (auto now : pizzas) {
+		sum += now.getPrice() * now.getAmount();
+	}
+	return sum;
+}
+
+void Order::addPizza(const std::string& name, double price, int amount) {
+	pizzas.emplace_back(name, price, amount);
+}
+
+
+std::vector<Pizza> PizzeriaDB::getPizzasAvailable() const {
+	return availablePizzas;
+}
+
+void PizzeriaDB::addClient(std::string l, std::string p) {
+	clientData[l] = p;
+}
+
+void PizzeriaDB::addEmployee(const std::string& name) {
+	Employee employee(name);
+	workers.push_back(employee);
+}
+
+void PizzeriaDB::deleteEmployee(const std::string& s) {
+	std::erase_if(workers, [&s](Employee& e) { return e.getName() == s; });
+}
+
+void PizzeriaDB::addPizza(const std::string& name, double price) {
+	Pizza temp(name, price);
+	availablePizzas.push_back(temp);
+}
+
+void PizzeriaDB::deletePizza(const std::string& s) {
+	std::erase_if(availablePizzas, [&s](Pizza& p) { return p.getPizzaType() == s; });
+}
+
+void PizzeriaDB::setAdminKey(const std::string& s) {
+	AdminKey = s;
+}
+
+bool PizzeriaDB::AdminIsValid(const std::string& s) const {
+	return s == AdminKey;
+}
+
+bool PizzeriaDB::ClientIsValid(const std::string& l, const std::string& p) const {
+	return clientData.contains(l) and clientData.at(l) == p;
+}
+
+void PizzeriaDB::newOrder(const Order& o) {
+	current_orders.push(o);
+}
+
+void PizzeriaDB::complete_order() {
+	while (!current_orders.empty()) {
+		for (Employee worker : workers) {
+			if (worker.isFree()) worker.doWork(current_orders.front());
+			current_orders.pop();
+			break;
+		}
+	}
+}
+
+void PizzeriaDB::saveDB() {
 	// Запись AdminKey
 	std::ofstream out("AdminKey.bin", std::ios::binary | std::ios::out);
 	if (!out) {
@@ -164,11 +190,11 @@ void PizzeriaDB::SaveDB() {
 	size_t pizzaCount = availablePizzas.size();
 	out.write((char*)&pizzaCount, sizeof(size_t));
 	for (const auto& pizza : availablePizzas) {
-		size_t typeLen = pizza.GetPizzaType().size();
+		size_t typeLen = pizza.getPizzaType().size();
 		out.write((char*)&typeLen, sizeof(size_t));
-		const std::string& pizzaType = pizza.GetPizzaType();
+		const std::string& pizzaType = pizza.getPizzaType();
 		out.write(pizzaType.c_str(), typeLen);
-		double price = pizza.GetPrice();
+		double price = pizza.getPrice();
 		out.write((char*)&price, sizeof(double));
 	}
 	out.close();
@@ -182,9 +208,9 @@ void PizzeriaDB::SaveDB() {
 	size_t workerCount = workers.size();
 	out.write((char*)&workerCount, sizeof(size_t));
 	for (const auto& worker : workers) {
-		size_t nameLen = worker.GetName().size();
+		size_t nameLen = worker.getName().size();
 		out.write((char*)&nameLen, sizeof(size_t));
-		out.write(worker.GetName().c_str(), nameLen);
+		out.write(worker.getName().c_str(), nameLen);
 	}
 	out.close();
 
@@ -208,7 +234,7 @@ void PizzeriaDB::SaveDB() {
 	out.close();
 }
 
-void PizzeriaDB::GetDB() {
+void PizzeriaDB::getDB() {
 	// Чтение AdminKey
 	std::ifstream in("AdminKey.bin", std::ios::binary);
 	if (!in) {
@@ -244,10 +270,10 @@ void PizzeriaDB::GetDB() {
 		in.read((char*)&typeLen, sizeof(size_t));
 		std::string pizzaType(typeLen, '\0');
 		in.read(&pizzaType[0], typeLen);
-		pizza.SetPizzaType(pizzaType);
+		pizza.setPizzaType(pizzaType);
 		double price;
 		in.read((char*)&price, sizeof(double));
-		pizza.SetPrice(price);
+		pizza.setPrice(price);
 		availablePizzas[i] = pizza;
 	}
 	in.close();
@@ -267,14 +293,11 @@ void PizzeriaDB::GetDB() {
 	workers.resize(workerCount);
 	for (size_t i = 0; i < workerCount; ++i) {
 		Employee employee;
-		size_t nameLen;
+		size_t nameLen = 20;
 		in.read((char*)&nameLen, sizeof(size_t));
 		std::string name(nameLen, '\0');
 		in.read(&name[0], nameLen);
-		employee.SetName(name);
-		bool isFree;
-		in.read((char*)&isFree, sizeof(bool));
-		employee.SetFree(isFree);
+		employee.setName(name);
 		workers[i] = employee;
 	}
 	in.close();
@@ -306,76 +329,6 @@ void PizzeriaDB::GetDB() {
 	}
 }
 
-
-
-
-
-
-
-double Order::getOrderPrice() const {
-	double sum = 0;
-	for (auto now : pizzas) {
-		sum += now.getPrice() * now.getAmount();
-	}
-	return sum;
-}
-
-void Order::addPizza(const std::string& name, double price, int amount) {
-	pizzas.emplace_back(name, price, amount);
-}
-
-std::vector<Pizza> PizzeriaDB::getPizzasAvailable() const {
-	return availablePizzas;
-}
-
-void PizzeriaDB::addClient(std::string l, std::string p) {
-	clientData[l] = p;
-}
-
-void PizzeriaDB::addEmployee(const std::string& name) {
-	Employee employee(name);
-	workers.push_back(employee);
-}
-
-void PizzeriaDB::deleteEmployee(const std::string& s) {
-	std::erase_if(workers, [&s](Employee& e) { return e.getName() == s; });
-}
-
-void PizzeriaDB::addPizza(const std::string& name, double price) {
-	Pizza temp(name, price);
-	availablePizzas.push_back(temp);
-}
-
-void PizzeriaDB::deletePizza(const std::string& s) {
-	std::erase_if(availablePizzas, [&s](Pizza& p) { return p.getName() == s; });
-}
-
-void PizzeriaDB::setAdminKey(const std::string& s) {
-	AdminKey = s;
-}
-
-bool PizzeriaDB::AdminIsValid(const std::string& s) const {
-	return s == AdminKey;
-}
-
-bool PizzeriaDB::ClientIsValid(const std::string& l, const std::string& p) const {
-	return clientData.contains(l) and clientData.at(l) == p;
-}
-
-void PizzeriaDB::newOrder(const Order& o) {
-	current_orders.push(o);
-}
-
-void PizzeriaDB::complete_order() {
-	while (!current_orders.empty()) {
-		for (Employee worker : workers) {
-			if (worker.isFree()) worker.doWork(current_orders.front());
-			current_orders.pop();
-			break;
-		}
-	}
-}
-
 Employee::Employee(const std::string& name, bool free) : name(name), free(free) {}
 
 void Employee::doWork(const Order& o) {
@@ -389,13 +342,29 @@ bool Employee::isFree() const {
 	return free;
 }
 
-std::string Employee::getName() const {
+void Employee::setName(const std::string& n) {
+	name = n;
+}
+
+const std::string& Employee::getName() const {
 	return name;
 }
 
 Pizza::Pizza(const std::string& type, double price, int amount) : pizza_type(type), price(price), amount(amount) {}
 
-std::string Pizza::getType() const {
+void Pizza::setPizzaType(const std::string& type) {
+	pizza_type = type;
+}
+
+void Pizza::setPrice(double p) {
+	price = p;
+}
+
+void Pizza::setAmount(unsigned int a) {
+	amount = a;
+}
+
+const std::string& Pizza::getPizzaType() const {
 	return pizza_type;
 }
 
@@ -403,12 +372,8 @@ double Pizza::getPrice() const {
 	return price;
 }
 
-int Pizza::getAmount() const {
+unsigned int Pizza::getAmount() const {
 	return amount;
-}
-
-std::string Pizza::getName() const {
-	return pizza_type;
 }
 
 void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
@@ -423,12 +388,12 @@ void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
 	char c = 'y';
 	while (c == 'y') {
 		for (int i = 0; i < menu.size(); i++) {
-			std::cout << i + 1 << " " << menu[i].getType() << " " << menu[i].getPrice() << std::endl;
+			std::cout << i + 1 << " " << menu[i].getPizzaType() << " " << menu[i].getPrice() << std::endl;
 		}
 		try {
 			int pizza_number = inputInt("Enter number of your pizza", 1, menu.size());
 			int amount = inputInt("Enter amount", 1);
-			this_order.addPizza(menu[pizza_number - 1].getType(), menu[pizza_number - 1].getPrice(), amount);
+			this_order.addPizza(menu[pizza_number - 1].getPizzaType(), menu[pizza_number - 1].getPrice(), amount);
 		}
 		catch (const std::invalid_argument& e) {
 			std::cout << e.what() << ". Enter correct number.\n";
@@ -457,7 +422,7 @@ void Client::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 		case 2: {
 			std::vector<Pizza> menu = db->getPizzasAvailable();
 			for (int i = 0; i < menu.size(); i++) {
-				std::cout << i + 1 << " " << menu[i].getType() << " " << menu[i].getPrice() << std::endl;
+				std::cout << i + 1 << " " << menu[i].getPizzaType() << " " << menu[i].getPrice() << std::endl;
 			}
 			break;
 		}
@@ -502,7 +467,7 @@ void Admin::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 		case 5: {
 			std::vector<Pizza> menu = db->getPizzasAvailable();
 			for (int i = 0; i < menu.size(); i++) {
-				std::cout << i + 1 << " " << menu[i].getType() << " " << menu[i].getPrice() << std::endl;
+				std::cout << i + 1 << " " << menu[i].getPizzaType() << " " << menu[i].getPrice() << std::endl;
 			}
 			break;
 		}
