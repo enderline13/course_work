@@ -2,9 +2,10 @@
 #include <string>
 #include <vector>
 #include <queue>
-#include <map>
 #include <fstream>
 #include <memory>
+#include <unordered_map>
+
 
 class Employee;
 class Order;
@@ -24,11 +25,12 @@ private:
 	std::string AdminKey = "superadmin";
 	std::vector<Pizza> availablePizzas;
 	std::vector<Employee> workers;
-	std::map<std::string, std::string> clientData;
+	std::unordered_map<std::string, std::string> clientData;
 	std::queue<Order> current_orders;
 public:
 	std::vector<Pizza> getPizzasAvailable() const;
 	void addClient(std::string, std::string);
+	std::vector<Employee> getWorkers();
 	void addEmployee(const std::string& name);
 	void deleteEmployee(const std::string& s);
 	void addPizza(const std::string& name, double price);
@@ -116,7 +118,6 @@ void Order::addPizza(const std::string& name, double price, int amount) {
 	pizzas.emplace_back(name, price, amount);
 }
 
-
 std::vector<Pizza> PizzeriaDB::getPizzasAvailable() const {
 	return availablePizzas;
 }
@@ -125,13 +126,22 @@ void PizzeriaDB::addClient(std::string l, std::string p) {
 	clientData[l] = p;
 }
 
+std::vector<Employee> PizzeriaDB::getWorkers() {
+	return workers;
+}
+
 void PizzeriaDB::addEmployee(const std::string& name) {
 	Employee employee(name);
 	workers.push_back(employee);
 }
 
 void PizzeriaDB::deleteEmployee(const std::string& s) {
-	std::erase_if(workers, [&s](Employee& e) { return e.getName() == s; });
+	int origSize = workers.size();
+	std::erase_if(workers, [&s](Employee& e) { return e.getName() == s;  });
+	if (origSize != workers.size()) {
+		std::cout << "Successfully deleted employee: " << s << std::endl;
+	}
+	else std::cout << "No employee with such name was found" << std::endl;
 }
 
 void PizzeriaDB::addPizza(const std::string& name, double price) {
@@ -140,7 +150,12 @@ void PizzeriaDB::addPizza(const std::string& name, double price) {
 }
 
 void PizzeriaDB::deletePizza(const std::string& s) {
+	int origSize = availablePizzas.size();
 	std::erase_if(availablePizzas, [&s](Pizza& p) { return p.getPizzaType() == s; });
+	if (origSize != availablePizzas.size()) {
+		std::cout << "Successfully deleted pizza: " << s << std::endl;
+	}
+	else std::cout << "No pizza with such name was found" << std::endl;
 }
 
 void PizzeriaDB::setAdminKey(const std::string& s) {
@@ -242,7 +257,6 @@ void PizzeriaDB::getDB() {
 		return;
 	}
 	if (in.peek() == std::ifstream::traits_type::eof()) {
-		// Файл пуст, пропускаем чтение
 		return;
 	}
 	size_t len;
@@ -258,7 +272,6 @@ void PizzeriaDB::getDB() {
 		return;
 	}
 	if (in.peek() == std::ifstream::traits_type::eof()) {
-		// Файл пуст, пропускаем чтение
 		return;
 	}
 	size_t pizzaCount;
@@ -285,7 +298,6 @@ void PizzeriaDB::getDB() {
 		return;
 	}
 	if (in.peek() == std::ifstream::traits_type::eof()) {
-		// Файл пуст, пропускаем чтение
 		return;
 	}
 	size_t workerCount;
@@ -309,7 +321,6 @@ void PizzeriaDB::getDB() {
 		return;
 	}
 	if (in.peek() == std::ifstream::traits_type::eof()) {
-		// Файл пуст, пропускаем чтение
 		return;
 	}
 	size_t clientDataSize;
@@ -384,21 +395,15 @@ void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
 	std::cin >> address;
 	Order this_order;
 	std::cout << "Choose your pizza: " << std::endl;
-	std::vector<Pizza> menu = p->getPizzasAvailable();
+	std::vector<Pizza> menu = std::move(p->getPizzasAvailable());
 	char c = 'y';
 	while (c == 'y') {
 		for (int i = 0; i < menu.size(); i++) {
 			std::cout << i + 1 << " " << menu[i].getPizzaType() << " " << menu[i].getPrice() << std::endl;
 		}
-		try {
-			int pizza_number = inputInt("Enter number of your pizza", 1, menu.size());
-			int amount = inputInt("Enter amount", 1);
-			this_order.addPizza(menu[pizza_number - 1].getPizzaType(), menu[pizza_number - 1].getPrice(), amount);
-		}
-		catch (const std::invalid_argument& e) {
-			std::cout << e.what() << ". Enter correct number.\n";
-			continue;
-		}
+		int pizza_number = inputInt("Enter number of your pizza", 1, menu.size());
+		int amount = inputInt("Enter amount", 1);
+		this_order.addPizza(menu[pizza_number - 1].getPizzaType(), menu[pizza_number - 1].getPrice(), amount);
 		std::cout << "Wanna add more? y/n" << std::endl;
 		std::cin >> c;
 	}
@@ -413,14 +418,14 @@ void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
 void Client::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 	while (true) {
 		std::cout << "1 - Make order\n2 - List of Pizzas\n3 - Exit\n";
-		int num = inputInt("Choose number: ", 1, 3);
+		int num = inputInt("Choose number", 1, 3);
 		std::string s;
 		switch (num) {
 		case 1:
 			this->makeOrder(db);
 			break;
 		case 2: {
-			std::vector<Pizza> menu = db->getPizzasAvailable();
+			std::vector<Pizza> menu = std::move(db->getPizzasAvailable());
 			for (int i = 0; i < menu.size(); i++) {
 				std::cout << i + 1 << " " << menu[i].getPizzaType() << " " << menu[i].getPrice() << std::endl;
 			}
@@ -435,11 +440,18 @@ void Client::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 
 void Admin::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 	while (true) {
-		std::cout << "1 - Add pizza\n2 - Delete pizza\n3 - Add employee\n4 - Delete employee\n5 - List of pizzas\n6 - Change admin key\n7 - Exit\n";
-		int num = inputInt("Choose number: ", 1, 7);
+		std::cout << "1 - List of pizzas\n2 - Add pizza\n3 - Delete pizza\n4 - List of employees\n5 - Add employee\n6 - Delete employee\n7 - Change admin key\n8 - Exit\n";
+		int num = inputInt("Choose number", 1, 8);
 		std::string s;
 		switch (num) {
-		case 1:
+		case 1: {
+			std::vector<Pizza> menu = std::move(db->getPizzasAvailable());
+			for (int i = 0; i < menu.size(); i++) {
+				std::cout << i + 1 << " " << menu[i].getPizzaType() << " " << menu[i].getPrice() << std::endl;
+			}
+			break;
+		}
+		case 2:
 			double p;
 			std::cout << "Enter pizza name: ";
 			std::cin.ignore();
@@ -448,35 +460,35 @@ void Admin::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 			std::cin >> p;
 			db->addPizza(s, p);
 			break;
-		case 2:
+		case 3:
 			std::cout << "Enter pizza name: ";
 			std::cin.ignore();
 			std::getline(std::cin, s);
 			db->deletePizza(s);
 			break;
-		case 3:
+		case 4: {
+			std::vector<Employee> workers = std::move(db->getWorkers());
+			for (Employee e : workers) {
+				std::cout << e.getName() << std::endl;
+			}
+			break;
+		}
+		case 5:
 			std::cout << "Enter employee name: ";
 			std::cin >> s;
 			db->addEmployee(s);
 			break;
-		case 4:
+		case 6:
 			std::cout << "Enter employee name: ";
 			std::cin >> s;
 			db->deleteEmployee(s);
 			break;
-		case 5: {
-			std::vector<Pizza> menu = db->getPizzasAvailable();
-			for (int i = 0; i < menu.size(); i++) {
-				std::cout << i + 1 << " " << menu[i].getPizzaType() << " " << menu[i].getPrice() << std::endl;
-			}
-			break;
-		}
-		case 6:
+		case 7:
 			std::cout << "Enter new admin key: ";
 			std::cin >> s;
 			db->setAdminKey(s);
 			break;
-		case 7:
+		case 8:
 			return;
 			break;
 		}
