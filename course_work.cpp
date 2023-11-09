@@ -51,10 +51,19 @@ private:
 public:
 	Employee() = default;
 	Employee(const std::string& name, bool free = true);
-	void doWork(const Order& o);
 	bool isFree() const;
 	void setName(const std::string& n);
 	const std::string& getName() const;
+};
+
+class PizzaMaker : public Employee {
+public:
+	void makePizza(const Order&);
+};
+
+class DeliveryMan : public Employee {
+public:
+	void deliver(const Order&);
 };
 
 class Pizza {
