@@ -15,7 +15,13 @@ class Pizza;
 class Order {
 private:
 	std::vector<Pizza> pizzas;
+	std::string deliveryAddress;
+	std::string clientName;
 public:
+	std::string getAddress() const;
+	std::string getClientName() const;
+	void setAddress(std::string);
+	void setClientName(std::string);
 	double getOrderPrice() const;
 	void addPizza(const std::string& name, double price, int amount = 1);
 };
@@ -24,13 +30,15 @@ class PizzeriaDB {
 private:
 	std::string AdminKey = "superadmin";
 	std::vector<Pizza> availablePizzas;
-	std::vector<Employee> workers;
+	std::vector<PizzaMaker> pizzaMakers;
+	std::vector<DeliveryMan> couriers;
 	std::unordered_map<std::string, std::string> clientData;
 	std::queue<Order> current_orders;
 public:
 	std::vector<Pizza> getPizzasAvailable() const;
 	void addClient(std::string, std::string);
-	std::vector<Employee> getWorkers();
+	std::vector<PizzaMaker> getPizzaMakers();
+	std::vector<DeliveryMan> getCouriers();
 	void addEmployee(const std::string& name);
 	void deleteEmployee(const std::string& s);
 	void addPizza(const std::string& name, double price);
@@ -45,7 +53,7 @@ public:
 };
 
 class Employee {
-private:
+protected:
 	std::string name;
 	bool free = 1;
 public:
@@ -113,7 +121,21 @@ int main()
 	dodo->saveDB();
 }
 
+std::string Order::getAddress() const {
+	return deliveryAddress;
+}
 
+std::string Order::getClientName() const {
+	return clientName;
+}
+
+void Order::setAddress(std::string s) {
+	deliveryAddress = s;
+}
+
+void Order::setClientName(std::string s) {
+	clientName = s;
+}
 
 double Order::getOrderPrice() const {
 	double sum = 0;
@@ -135,12 +157,23 @@ void PizzeriaDB::addClient(std::string l, std::string p) {
 	clientData[l] = p;
 }
 
-std::vector<Employee> PizzeriaDB::getWorkers() {
-	return workers;
+std::vector<PizzaMaker> PizzeriaDB::getPizzaMakers() {
+	return pizzaMakers;
+}
+
+std::vector<DeliveryMan> PizzeriaDB::getCouriers() {
+	return couriers;
 }
 
 void PizzeriaDB::addEmployee(const std::string& name) {
-	Employee employee(name);
+	std::cout << "1 - Add pizza maker\n2 - Add deliveryman\n";
+	int n = inputInt("Choose number", 1, 2);
+	std::string name;
+	std::cout << "Enter name: "
+	switch (n) {
+	case 1:
+		
+	}
 	workers.push_back(employee);
 }
 
@@ -185,8 +218,11 @@ void PizzeriaDB::newOrder(const Order& o) {
 
 void PizzeriaDB::complete_order() {
 	while (!current_orders.empty()) {
-		for (Employee worker : workers) {
-			if (worker.isFree()) worker.doWork(current_orders.front());
+		for (PizzaMaker maker : pizzaMakers) {
+			if (maker.isFree()) maker.makePizza(current_orders.front());
+			for (DeliveryMan cour : couriers) {
+				if (cour.isFree()) cour.deliver(current_orders.front());
+			}
 			current_orders.pop();
 			break;
 		}
@@ -351,10 +387,17 @@ void PizzeriaDB::getDB() {
 
 Employee::Employee(const std::string& name, bool free) : name(name), free(free) {}
 
-void Employee::doWork(const Order& o) {
+void PizzaMaker::makePizza(const Order& o) {
 	free = false;
 	std::cout << "Worker " << this->name << " is working" << std::endl;
 	std::cout << "Worker has finished" << std::endl;
+	free = true;
+}
+
+void DeliveryMan::deliver(const Order& o) {
+	free = false;
+	std::cout << "Courier " << this->name << " is delireving to " << o.getClientName() << " on address: " << o.getAddress() << std::endl;
+	std::cout << "Delivery man has delivered" << std::endl;
 	free = true;
 }
 
@@ -397,12 +440,14 @@ unsigned int Pizza::getAmount() const {
 }
 
 void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
-	std::string name, address;
-	std::cout << "Enter your name: ";
-	std::cin >> name;
-	std::cout << "Enter your address: ";
-	std::cin >> address;
+	std::string temp;
 	Order this_order;
+	std::cout << "Enter your name: ";
+	std::cin >> temp;
+	this_order.setClientName(temp);
+	std::cout << "Enter your address: ";
+	std::cin >> temp;
+	this_order.setAddress(temp);
 	std::cout << "Choose your pizza: " << std::endl;
 	std::vector<Pizza> menu = std::move(p->getPizzasAvailable());
 	char c = 'y';
@@ -420,8 +465,6 @@ void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
 	std::cout << "Your total is: " << this_order.getOrderPrice() << std::endl;
 	std::cout << "Your order is now in work" << std::endl;
 	p->complete_order();
-	std::cout << "Your order is ready" << std::endl;
-	std::cout << "It will be delivered to: " << name << ". Address: " << address << std::endl;
 }
 
 void Client::MainMenu(std::shared_ptr<PizzeriaDB> db) {
