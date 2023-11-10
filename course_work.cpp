@@ -37,7 +37,10 @@ public:
 };
 
 class FeedbackSystem {
+private:
+	std::vector<std::string> feedbacks;
 public:
+	std::vector<std::string>& getReviews();
 	void receiveFeedback(const std::string& clientName, const std::string& feedback);
 };
 
@@ -50,8 +53,9 @@ private:
 	std::unordered_map<std::string, std::string> clientData;
 	std::queue<Order> current_orders;
 	Checkout kassa;
-	FeedbackSystem feedback_system;
+	FeedbackSystem feedbackReceiver;
 public:
+	void readFeedbacks();
 	std::vector<Pizza> getPizzasAvailable() const;
 	void addClient(std::string, std::string);
 	std::vector<PizzaMaker> getPizzaMakers();
@@ -68,6 +72,7 @@ public:
 	void getDB();
 	void saveDB();
 	void paymentProcess(const Order&);
+	void getFeedback(std::string);
 };
 
 class Employee {
@@ -167,6 +172,16 @@ double Order::getOrderPrice() const {
 
 void Order::addPizza(const std::string& name, double price, int amount) {
 	pizzas.emplace_back(name, price, amount);
+}
+
+void PizzeriaDB::readFeedbacks() {
+	for (auto now : feedbackReceiver.getReviews()) {
+		std::cout << now << std::endl;
+	}
+}
+
+std::vector<std::string>& FeedbackSystem::getReviews() {
+	return feedbacks;
 }
 
 std::vector<Pizza> PizzeriaDB::getPizzasAvailable() const {
@@ -344,6 +359,21 @@ void PizzeriaDB::saveDB() {
 		out.write(entry.second.c_str(), valueLen);
 	}
 	out.close();
+
+	// Запись Reviews
+	out.open("Reviews.bin", std::ios::binary | std::ios::out);
+	if (!out) {
+		std::cout << "Failed to open DeliveryManDB.bin for writing." << std::endl;
+		return;
+	}
+	size_t reviewsSize = feedbackReceiver.getReviews().size();
+	out.write((char*)&reviewsSize, sizeof(size_t));
+	for (const auto& review : feedbackReceiver.getReviews()) {
+		size_t nameLen = review.size();
+		out.write((char*)&nameLen, sizeof(size_t));
+		out.write(review.c_str(), nameLen);
+	}
+	out.close();
 }
 
 void PizzeriaDB::getDB() {
@@ -458,6 +488,29 @@ void PizzeriaDB::getDB() {
 
 		clientData[key] = value;
 	}
+	in.close();
+
+	// Чтение Reviews
+	in.open("Reviews.bin", std::ios::binary);
+	if (!in) {
+		std::cout << "Failed to open Reviews.bin for reading." << std::endl;
+		return;
+	}
+	if (in.peek() == std::ifstream::traits_type::eof()) {
+		return;
+	}
+	size_t reviewCount;
+	in.read((char*)&reviewCount, sizeof(size_t));
+	feedbackReceiver.getReviews().resize(reviewCount);
+	for (size_t i = 0; i < reviewCount; ++i) {
+		std::string temp;
+		size_t nameLen;
+		in.read((char*)&nameLen, sizeof(size_t));
+		std::string review(nameLen, '\0');
+		in.read(&review[0], nameLen);
+		feedbackReceiver.getReviews()[i] = review;	
+	}
+	in.close();
 }
 
 void PizzeriaDB::paymentProcess(const Order& o) {
@@ -467,6 +520,19 @@ void PizzeriaDB::paymentProcess(const Order& o) {
 	if (c == 'y') kassa.setDiscount(0.5);
 	else kassa.setDiscount(1);
 	kassa.processPayment(o);
+}
+
+void PizzeriaDB::getFeedback(std::string client_name) {
+	std::cout << "Would you like to leave a feedback? y/n" << std::endl;
+	char c;
+	std::string temp;
+	std::cin >> c;
+	if (c == 'y') {
+		std::cout << "Write your opinion about our service: ";
+		std::cin.ignore();
+		std::getline(std::cin, temp);
+		feedbackReceiver.receiveFeedback(client_name, temp);
+	}
 }
 
 Employee::Employee(const std::string& name, bool free) : name(name), free(free) {}
@@ -550,12 +616,13 @@ void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
 	p->paymentProcess(this_order);
 	std::cout << "Your order is now in work" << std::endl;
 	p->complete_order();
+	p->getFeedback(this_order.getClientName());
 }
 
 void Client::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 	while (true) {
-		std::cout << "1 - Make order\n2 - List of Pizzas\n3 - Exit\n";
-		int num = inputInt("Choose number", 1, 3);
+		std::cout << "1 - Make order\n2 - List of Pizzas\n3 - Read reviews\n4 - Exit\n";
+		int num = inputInt("Choose number", 1, 4);
 		std::string s;
 		switch (num) {
 		case 1:
@@ -569,6 +636,9 @@ void Client::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 			break;
 		}
 		case 3:
+			db->readFeedbacks();
+			break;
+		case 4:
 			return;
 			break;
 		}
@@ -661,8 +731,8 @@ void Checkout::setDiscount(double a) {
 	discount_modifier = a;
 }
 
-void receiveFeedback(const std::string& clientName, const std::string& feedback) {
-
+void FeedbackSystem::receiveFeedback(const std::string& clientName, const std::string& feedback) {
+	feedbacks.push_back(clientName + ": " + feedback);
 }
 
 int inputInt(const std::string& prompt, int m, int M) {
