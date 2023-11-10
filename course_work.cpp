@@ -10,7 +10,8 @@
 class Employee;
 class Order;
 class Pizza;
-
+class PizzaMaker;
+class DeliveryMan;
 
 class Order {
 private:
@@ -106,6 +107,7 @@ public:
 	virtual void MainMenu(std::shared_ptr<PizzeriaDB> db) override;
 };
 
+
 int inputInt(const std::string& prompt, int m = 1, int M = 1000);
 
 std::shared_ptr<User> authorisation(std::shared_ptr<PizzeriaDB>);
@@ -168,22 +170,39 @@ std::vector<DeliveryMan> PizzeriaDB::getCouriers() {
 void PizzeriaDB::addEmployee(const std::string& name) {
 	std::cout << "1 - Add pizza maker\n2 - Add deliveryman\n";
 	int n = inputInt("Choose number", 1, 2);
-	std::string name;
-	std::cout << "Enter name: "
 	switch (n) {
 	case 1:
-		
+		pizzaMakers.push_back(PizzaMaker(name));
+		break;
+	case 2:
+		couriers.push_back(DeliveryMan(name));
+		break;
 	}
-	workers.push_back(employee);
 }
 
 void PizzeriaDB::deleteEmployee(const std::string& s) {
-	int origSize = workers.size();
-	std::erase_if(workers, [&s](Employee& e) { return e.getName() == s;  });
-	if (origSize != workers.size()) {
-		std::cout << "Successfully deleted employee: " << s << std::endl;
+	std::cout << "1 - Delete pizza maker\n2 - Delete deliveryman\n";
+	int n = inputInt("Choose number", 1, 2);
+	int origSize;
+	switch (n) {
+	case 1:
+		origSize = pizzaMakers.size();
+		std::erase_if(pizzaMakers, [&s](PizzaMaker& e) { return e.getName() == s;  });\
+		if (origSize != pizzaMakers.size()) {
+			std::cout << "Successfully deleted employee: " << s << std::endl;
+		}
+		else std::cout << "No employee with such name was found" << std::endl;
+		break;
+	case 2:
+		origSize = couriers.size();
+		std::erase_if(couriers, [&s](DeliveryMan& e) { return e.getName() == s;  });
+		if (origSize != couriers.size()) {
+			std::cout << "Successfully deleted employee: " << s << std::endl;
+		}
+		else std::cout << "No employee with such name was found" << std::endl;
+		break;
 	}
-	else std::cout << "No employee with such name was found" << std::endl;
+	
 }
 
 void PizzeriaDB::addPizza(const std::string& name, double price) {
@@ -259,15 +278,30 @@ void PizzeriaDB::saveDB() {
 	}
 	out.close();
 
-	// Запись WorkersDB
+	// Запись PizzaMakersDB
 	out.open("WorkersDB.bin", std::ios::binary | std::ios::out);
 	if (!out) {
 		std::cout << "Failed to open WorkersDB.bin for writing." << std::endl;
 		return;
 	}
-	size_t workerCount = workers.size();
+	size_t PizzaMakerCount = pizzaMakers.size();
+	out.write((char*)&PizzaMakerCount, sizeof(size_t));
+	for (const auto& worker : pizzaMakers) {
+		size_t nameLen = worker.getName().size();
+		out.write((char*)&nameLen, sizeof(size_t));
+		out.write(worker.getName().c_str(), nameLen);
+	}
+	out.close();
+
+	// Запись DeliveryManDB
+	out.open("DeliveryManDB.bin", std::ios::binary | std::ios::out);
+	if (!out) {
+		std::cout << "Failed to open DeliveryManDB.bin for writing." << std::endl;
+		return;
+	}
+	size_t workerCount = couriers.size();
 	out.write((char*)&workerCount, sizeof(size_t));
-	for (const auto& worker : workers) {
+	for (const auto& worker : couriers) {
 		size_t nameLen = worker.getName().size();
 		out.write((char*)&nameLen, sizeof(size_t));
 		out.write(worker.getName().c_str(), nameLen);
@@ -336,8 +370,31 @@ void PizzeriaDB::getDB() {
 	}
 	in.close();
 
-	// Чтение WorkersDB
+	// Чтение PizzaMakerDB
 	in.open("WorkersDB.bin", std::ios::binary);
+	if (!in) {
+		std::cout << "Failed to open WorkersDB.bin for reading." << std::endl;
+		return;
+	}
+	if (in.peek() == std::ifstream::traits_type::eof()) {
+		return;
+	}
+	size_t PizzaMakerCount;
+	in.read((char*)&PizzaMakerCount, sizeof(size_t));
+	pizzaMakers.resize(PizzaMakerCount);
+	for (size_t i = 0; i < PizzaMakerCount; ++i) {
+		PizzaMaker employee;
+		size_t nameLen = 20;
+		in.read((char*)&nameLen, sizeof(size_t));
+		std::string name(nameLen, '\0');
+		in.read(&name[0], nameLen);
+		employee.setName(name);
+		pizzaMakers[i] = employee;
+	}
+	in.close();
+
+	// Чтение DeliveryManDB
+	in.open("DeliveryManDB.bin", std::ios::binary);
 	if (!in) {
 		std::cout << "Failed to open WorkersDB.bin for reading." << std::endl;
 		return;
@@ -347,15 +404,15 @@ void PizzeriaDB::getDB() {
 	}
 	size_t workerCount;
 	in.read((char*)&workerCount, sizeof(size_t));
-	workers.resize(workerCount);
+	couriers.resize(workerCount);
 	for (size_t i = 0; i < workerCount; ++i) {
-		Employee employee;
+		DeliveryMan employee;
 		size_t nameLen = 20;
 		in.read((char*)&nameLen, sizeof(size_t));
 		std::string name(nameLen, '\0');
 		in.read(&name[0], nameLen);
 		employee.setName(name);
-		workers[i] = employee;
+		couriers[i] = employee;
 	}
 	in.close();
 
@@ -492,8 +549,8 @@ void Client::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 
 void Admin::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 	while (true) {
-		std::cout << "1 - List of pizzas\n2 - Add pizza\n3 - Delete pizza\n4 - List of employees\n5 - Add employee\n6 - Delete employee\n7 - Change admin key\n8 - Exit\n";
-		int num = inputInt("Choose number", 1, 8);
+		std::cout << "1 - List of pizzas\n2 - Add pizza\n3 - Delete pizza\n4 - List of pizzamakers\n5 - List of couriers\n6 - Add employee\n7 - Delete employee\n8 - Change admin key\n9 - Exit\n";
+		int num = inputInt("Choose number", 1, 9);
 		std::string s;
 		switch (num) {
 		case 1: {
@@ -519,28 +576,35 @@ void Admin::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 			db->deletePizza(s);
 			break;
 		case 4: {
-			std::vector<Employee> workers = std::move(db->getWorkers());
-			for (Employee e : workers) {
+			std::vector<PizzaMaker> workers = std::move(db->getPizzaMakers());
+			for (PizzaMaker e : workers) {
 				std::cout << e.getName() << std::endl;
 			}
 			break;
 		}
-		case 5:
+		case 5: {
+			std::vector<DeliveryMan> workers = std::move(db->getCouriers());
+			for (DeliveryMan e : workers) {
+				std::cout << e.getName() << std::endl;
+			}
+			break;
+		}
+		case 6:
 			std::cout << "Enter employee name: ";
 			std::cin >> s;
 			db->addEmployee(s);
 			break;
-		case 6:
+		case 7:
 			std::cout << "Enter employee name: ";
 			std::cin >> s;
 			db->deleteEmployee(s);
 			break;
-		case 7:
+		case 8:
 			std::cout << "Enter new admin key: ";
 			std::cin >> s;
 			db->setAdminKey(s);
 			break;
-		case 8:
+		case 9:
 			return;
 			break;
 		}
