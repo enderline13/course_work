@@ -29,9 +29,16 @@ public:
 };
 
 class Checkout {
+private:
+	double discount_modifier;
 public:
-	Checkout() = default;
 	void processPayment(const Order& o);
+	void setDiscount(double);
+};
+
+class FeedbackSystem {
+public:
+	void receiveFeedback(const std::string& clientName, const std::string& feedback);
 };
 
 class PizzeriaDB {
@@ -43,6 +50,7 @@ private:
 	std::unordered_map<std::string, std::string> clientData;
 	std::queue<Order> current_orders;
 	Checkout kassa;
+	FeedbackSystem feedback_system;
 public:
 	std::vector<Pizza> getPizzasAvailable() const;
 	void addClient(std::string, std::string);
@@ -453,6 +461,11 @@ void PizzeriaDB::getDB() {
 }
 
 void PizzeriaDB::paymentProcess(const Order& o) {
+	char c;
+	std::cout << "Do you have a bonus card y/n" << std::endl;
+	std::cin >> c;
+	if (c == 'y') kassa.setDiscount(0.5);
+	else kassa.setDiscount(1);
 	kassa.processPayment(o);
 }
 
@@ -627,7 +640,7 @@ void Admin::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 }
 
 void Checkout::processPayment(const Order& o) {
-	std::cout << "You need to pay: " << o.getOrderPrice() << std::endl;
+	std::cout << "You need to pay: " << o.getOrderPrice() * discount_modifier << std::endl;
 	std::cout << "1 - Cash\n2 - Credit card\n3 - Credit card online\n";
 	int n = inputInt("Choose number", 1, 3);
 	switch (n) {
@@ -642,6 +655,14 @@ void Checkout::processPayment(const Order& o) {
 		std::cout << "Payment successful" << std::endl;
 		return;
 	}
+}
+
+void Checkout::setDiscount(double a) {
+	discount_modifier = a;
+}
+
+void receiveFeedback(const std::string& clientName, const std::string& feedback) {
+
 }
 
 int inputInt(const std::string& prompt, int m, int M) {
