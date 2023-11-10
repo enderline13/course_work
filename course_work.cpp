@@ -12,6 +12,7 @@ class Order;
 class Pizza;
 class PizzaMaker;
 class DeliveryMan;
+class Checkout;
 
 class Order {
 private:
@@ -27,6 +28,12 @@ public:
 	void addPizza(const std::string& name, double price, int amount = 1);
 };
 
+class Checkout {
+public:
+	Checkout() = default;
+	void processPayment(const Order& o);
+};
+
 class PizzeriaDB {
 private:
 	std::string AdminKey = "superadmin";
@@ -35,6 +42,7 @@ private:
 	std::vector<DeliveryMan> couriers;
 	std::unordered_map<std::string, std::string> clientData;
 	std::queue<Order> current_orders;
+	Checkout kassa;
 public:
 	std::vector<Pizza> getPizzasAvailable() const;
 	void addClient(std::string, std::string);
@@ -51,6 +59,7 @@ public:
 	void complete_order();
 	void getDB();
 	void saveDB();
+	void paymentProcess(const Order&);
 };
 
 class Employee {
@@ -106,6 +115,7 @@ class Admin : public User {
 public:
 	virtual void MainMenu(std::shared_ptr<PizzeriaDB> db) override;
 };
+
 
 
 int inputInt(const std::string& prompt, int m = 1, int M = 1000);
@@ -442,6 +452,10 @@ void PizzeriaDB::getDB() {
 	}
 }
 
+void PizzeriaDB::paymentProcess(const Order& o) {
+	kassa.processPayment(o);
+}
+
 Employee::Employee(const std::string& name, bool free) : name(name), free(free) {}
 
 void PizzaMaker::makePizza(const Order& o) {
@@ -520,6 +534,7 @@ void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
 	}
 	p->newOrder(this_order);
 	std::cout << "Your total is: " << this_order.getOrderPrice() << std::endl;
+	p->paymentProcess(this_order);
 	std::cout << "Your order is now in work" << std::endl;
 	p->complete_order();
 }
@@ -608,6 +623,24 @@ void Admin::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 			return;
 			break;
 		}
+	}
+}
+
+void Checkout::processPayment(const Order& o) {
+	std::cout << "You need to pay: " << o.getOrderPrice() << std::endl;
+	std::cout << "1 - Cash\n2 - Credit card\n3 - Credit card online\n";
+	int n = inputInt("Choose number", 1, 3);
+	switch (n) {
+	case 1:
+		return;
+	case 2:
+		return;
+	case 3:
+		std::cout << "Enter your card: ";
+		std::string card_number;
+		std::cin >> card_number;
+		std::cout << "Payment successful" << std::endl;
+		return;
 	}
 }
 
