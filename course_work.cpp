@@ -22,8 +22,8 @@ private:
 public:
 	std::string getAddress() const;
 	std::string getClientName() const;
-	void setAddress(std::string);
-	void setClientName(std::string);
+	void setAddress(const std::string&);
+	void setClientName(const std::string&);
 	double getOrderPrice() const;
 	void addPizza(const std::string& name, double price, int amount = 1);
 };
@@ -57,7 +57,7 @@ private:
 public:
 	void readFeedbacks();
 	std::vector<Pizza> getPizzasAvailable() const;
-	void addClient(std::string, std::string);
+	void addClient(const std::string&, const std::string&);
 	std::vector<PizzaMaker> getPizzaMakers();
 	std::vector<DeliveryMan> getCouriers();
 	void addEmployee(const std::string& name);
@@ -72,7 +72,7 @@ public:
 	void getDB();
 	void saveDB();
 	void paymentProcess(const Order&);
-	void getFeedback(std::string);
+	void getFeedback(const std::string&);
 };
 
 class Employee {
@@ -154,11 +154,11 @@ std::string Order::getClientName() const {
 	return clientName;
 }
 
-void Order::setAddress(std::string s) {
+void Order::setAddress(const std::string& s) {
 	deliveryAddress = s;
 }
 
-void Order::setClientName(std::string s) {
+void Order::setClientName(const std::string& s) {
 	clientName = s;
 }
 
@@ -188,7 +188,7 @@ std::vector<Pizza> PizzeriaDB::getPizzasAvailable() const {
 	return availablePizzas;
 }
 
-void PizzeriaDB::addClient(std::string l, std::string p) {
+void PizzeriaDB::addClient(const std::string& l, const std::string& p) {
 	clientData[l] = p;
 }
 
@@ -522,7 +522,7 @@ void PizzeriaDB::paymentProcess(const Order& o) {
 	kassa.processPayment(o);
 }
 
-void PizzeriaDB::getFeedback(std::string client_name) {
+void PizzeriaDB::getFeedback(const std::string& client_name) {
 	std::cout << "Would you like to leave a feedback? y/n" << std::endl;
 	char c;
 	std::string temp;
@@ -615,6 +615,7 @@ void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
 	p->newOrder(this_order);
 	std::cout << "Your total is: " << this_order.getOrderPrice() << std::endl;
 	p->paymentProcess(this_order);
+	system("CLS");
 	std::cout << "Your order is now in work" << std::endl;
 	p->complete_order();
 	p->getFeedback(this_order.getClientName());
