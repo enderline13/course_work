@@ -30,7 +30,7 @@ public:
 
 class Checkout {
 private:
-	double discount_modifier;
+	double discount_modifier = 1;
 public:
 	void processPayment(const Order& o);
 	void setDiscount(double);
@@ -590,6 +590,7 @@ unsigned int Pizza::getAmount() const {
 }
 
 void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
+	system("CLS");
 	std::string temp;
 	Order this_order;
 	std::cout << "Enter your name: ";
@@ -617,9 +618,11 @@ void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
 	std::cout << "Your order is now in work" << std::endl;
 	p->complete_order();
 	p->getFeedback(this_order.getClientName());
+	system("CLS");
 }
 
 void Client::MainMenu(std::shared_ptr<PizzeriaDB> db) {
+	system("CLS");
 	while (true) {
 		std::cout << "1 - Make order\n2 - List of Pizzas\n3 - Read reviews\n4 - Exit\n";
 		int num = inputInt("Choose number", 1, 4);
@@ -646,6 +649,7 @@ void Client::MainMenu(std::shared_ptr<PizzeriaDB> db) {
 }
 
 void Admin::MainMenu(std::shared_ptr<PizzeriaDB> db) {
+	system("CLS");
 	while (true) {
 		std::cout << "1 - List of pizzas\n2 - Add pizza\n3 - Delete pizza\n4 - List of pizzamakers\n5 - List of couriers\n6 - Add employee\n7 - Delete employee\n8 - Change admin key\n9 - Exit\n";
 		int num = inputInt("Choose number", 1, 9);
@@ -757,7 +761,10 @@ std::shared_ptr<User> authorisation(std::shared_ptr<PizzeriaDB> db) {
 			std::cout << "Enter admin access key: ";
 			std::cin >> s;
 			if (db->AdminIsValid(s)) return std::make_shared<Admin>();
-			else std::cout << "Wrong key" << std::endl;
+			else {
+				system("CLS");
+				std::cout << "Wrong key" << std::endl;
+			}
 		}
 		else if (num == 2) {
 			num = inputInt("1 - sign up\n2 - log in", 1, 2);
@@ -777,7 +784,10 @@ std::shared_ptr<User> authorisation(std::shared_ptr<PizzeriaDB> db) {
 				std::cout << "Enter password: ";
 				std::cin >> p;
 				if (db->ClientIsValid(l, p)) return std::make_shared<Client>();
-				else std::cout << "Wrong login or password" << std::endl;
+				else {
+					system("CLS");
+					std::cout << "Wrong login or password" << std::endl;
+				}
 			}
 		}
 		else if (num == 3) exit(0);
