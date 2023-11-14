@@ -119,7 +119,11 @@ public:
 };
 
 class Client : public User {
+private:
+	std::string savedAddress = "Unknown";
 public:
+	std::string getAddress();
+	void setAddress(const std::string&);
 	void makeOrder(std::shared_ptr<PizzeriaDB> p);
 	virtual void MainMenu(std::shared_ptr<PizzeriaDB> db) override;
 };
@@ -589,6 +593,14 @@ unsigned int Pizza::getAmount() const {
 	return amount;
 }
 
+std::string Client::getAddress() {
+	return savedAddress;
+}
+
+void Client::setAddress(const std::string& s) {
+	savedAddress = s;
+}
+
 void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
 	system("CLS");
 	std::string temp;
@@ -596,9 +608,18 @@ void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
 	std::cout << "Enter your name: ";
 	std::cin >> temp;
 	this_order.setClientName(temp);
-	std::cout << "Enter your address: ";
-	std::cin >> temp;
-	this_order.setAddress(temp);
+	int n = inputInt("1 - Use saved address\n2 - Use another address\n", 1, 2);
+	switch (n) {
+	case 1:
+		this_order.setAddress(this->getAddress());
+		break;
+	case 2:
+		std::cout << "Enter your address: ";
+		std::cin >> temp;
+		this_order.setAddress(temp);
+		this->setAddress(temp);
+		break;
+	}
 	std::cout << "Choose your pizza: " << std::endl;
 	std::vector<Pizza> menu = std::move(p->getPizzasAvailable());
 	char c = 'y';
@@ -619,6 +640,7 @@ void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
 	std::cout << "Your order is now in work" << std::endl;
 	p->complete_order();
 	p->getFeedback(this_order.getClientName());
+
 	system("CLS");
 }
 
