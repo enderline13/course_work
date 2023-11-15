@@ -50,11 +50,14 @@ private:
 	std::vector<Pizza> availablePizzas;
 	std::vector<PizzaMaker> pizzaMakers;
 	std::vector<DeliveryMan> couriers;
-	std::unordered_map<std::string, std::string> clientData;
+	std::unordered_map<std::string, std::string> clientLogins;
+	std::unordered_map<std::string, std::string> clientAddresses;
 	std::queue<Order> current_orders;
 	Checkout kassa;
 	FeedbackSystem feedbackReceiver;
 public:
+	std::string getClientAddress(const std::string&);
+	void saveAddress(const std::string&, const std::string&);
 	void readFeedbacks();
 	std::vector<Pizza> getPizzasAvailable() const;
 	void addClient(const std::string&, const std::string&);
@@ -121,7 +124,10 @@ public:
 class Client : public User {
 private:
 	std::string savedAddress = "Unknown";
+	std::string login;
 public:
+	Client() = default;
+	Client(std::string l, std::string s) : login(l), savedAddress(s) {}
 	std::string getAddress();
 	void setAddress(const std::string&);
 	void makeOrder(std::shared_ptr<PizzeriaDB> p);
@@ -188,12 +194,22 @@ std::vector<std::string>& FeedbackSystem::getReviews() {
 	return feedbacks;
 }
 
+std::string PizzeriaDB::getClientAddress(const std::string& l) {
+	if (clientAddresses.contains(l))
+		return clientAddresses.at(l);
+	else return "Unknown";
+}
+
 std::vector<Pizza> PizzeriaDB::getPizzasAvailable() const {
 	return availablePizzas;
 }
 
 void PizzeriaDB::addClient(const std::string& l, const std::string& p) {
-	clientData[l] = p;
+	clientLogins[l] = p;
+}
+
+void PizzeriaDB::saveAddress(const std::string& login, const std::string& address) {
+	clientAddresses[login] = address;
 }
 
 std::vector<PizzaMaker> PizzeriaDB::getPizzaMakers() {
@@ -265,7 +281,7 @@ bool PizzeriaDB::AdminIsValid(const std::string& s) const {
 }
 
 bool PizzeriaDB::ClientIsValid(const std::string& l, const std::string& p) const {
-	return clientData.contains(l) and clientData.at(l) == p;
+	return clientLogins.contains(l) and clientLogins.at(l) == p;
 }
 
 void PizzeriaDB::newOrder(const Order& o) {
@@ -277,7 +293,10 @@ void PizzeriaDB::complete_order() {
 		for (PizzaMaker maker : pizzaMakers) {
 			if (maker.isFree()) maker.makePizza(current_orders.front());
 			for (DeliveryMan cour : couriers) {
-				if (cour.isFree()) cour.deliver(current_orders.front());
+				if (cour.isFree()) {
+					cour.deliver(current_orders.front());
+					break;
+				}
 			}
 			current_orders.pop();
 			break;
@@ -351,9 +370,28 @@ void PizzeriaDB::saveDB() {
 		std::cout << "Failed to open ClientData.bin for writing." << std::endl;
 		return;
 	}
-	size_t clientDataSize = clientData.size();
+	size_t clientDataSize = clientLogins.size();
 	out.write((char*)&clientDataSize, sizeof(size_t));
-	for (const auto& entry : clientData) {
+	for (const auto& entry : clientLogins) {
+		size_t keyLen = entry.first.size();
+		out.write((char*)&keyLen, sizeof(size_t));
+		out.write(entry.first.c_str(), keyLen);
+
+		size_t valueLen = entry.second.size();
+		out.write((char*)&valueLen, sizeof(size_t));
+		out.write(entry.second.c_str(), valueLen);
+	}
+	out.close();
+
+	// Запись ClientAddresses
+	out.open("ClientAddresses.bin", std::ios::binary | std::ios::out);
+	if (!out) {
+		std::cout << "Failed to open ClientAddresses.bin for writing." << std::endl;
+		return;
+	}
+	size_t clientAdrSize = clientAddresses.size();
+	out.write((char*)&clientAdrSize, sizeof(size_t));
+	for (const auto& entry : clientAddresses) {
 		size_t keyLen = entry.first.size();
 		out.write((char*)&keyLen, sizeof(size_t));
 		out.write(entry.first.c_str(), keyLen);
@@ -468,7 +506,32 @@ void PizzeriaDB::getDB() {
 	}
 	in.close();
 
-	// Чтение ClientData
+	// Чтение ClientAdresses
+	in.open("ClientAddresses.bin", std::ios::binary);
+	if (!in) {
+		std::cout << "Failed to open ClientAddresses.bin for reading." << std::endl;
+		return;
+	}
+	if (in.peek() == std::ifstream::traits_type::eof()) {
+		return;
+	}
+	size_t clientAdrSize;
+	in.read((char*)&clientAdrSize, sizeof(size_t));
+	clientAddresses.clear();
+	for (size_t i = 0; i < clientAdrSize; ++i) {
+		size_t keyLen, valueLen;
+		in.read((char*)&keyLen, sizeof(size_t));
+		std::string key(keyLen, '\0');
+		in.read(&key[0], keyLen);
+
+		in.read((char*)&valueLen, sizeof(size_t));
+		std::string value(valueLen, '\0');
+		in.read(&value[0], valueLen);
+
+		clientAddresses[key] = value;
+	}
+	in.close();
+
 	in.open("ClientData.bin", std::ios::binary);
 	if (!in) {
 		std::cout << "Failed to open ClientData.bin for reading." << std::endl;
@@ -479,7 +542,7 @@ void PizzeriaDB::getDB() {
 	}
 	size_t clientDataSize;
 	in.read((char*)&clientDataSize, sizeof(size_t));
-	clientData.clear();
+	clientLogins.clear();
 	for (size_t i = 0; i < clientDataSize; ++i) {
 		size_t keyLen, valueLen;
 		in.read((char*)&keyLen, sizeof(size_t));
@@ -490,7 +553,7 @@ void PizzeriaDB::getDB() {
 		std::string value(valueLen, '\0');
 		in.read(&value[0], valueLen);
 
-		clientData[key] = value;
+		clientLogins[key] = value;
 	}
 	in.close();
 
@@ -608,16 +671,22 @@ void Client::makeOrder(std::shared_ptr<PizzeriaDB> p) {
 	std::cout << "Enter your name: ";
 	std::cin >> temp;
 	this_order.setClientName(temp);
-	int n = inputInt("1 - Use saved address\n2 - Use another address\n", 1, 2);
+	int n;
+	if (this->getAddress() != "Unknown") {
+		n = inputInt("1 - Use saved address\n2 - Use another address\n", 1, 2);
+	}
+	else n = 2;
 	switch (n) {
 	case 1:
 		this_order.setAddress(this->getAddress());
 		break;
 	case 2:
 		std::cout << "Enter your address: ";
-		std::cin >> temp;
+		std::cin.ignore();
+		std::getline(std::cin, temp);
 		this_order.setAddress(temp);
 		this->setAddress(temp);
+		p->saveAddress(this->login, temp);
 		break;
 	}
 	std::cout << "Choose your pizza: " << std::endl;
@@ -806,7 +875,9 @@ std::shared_ptr<User> authorisation(std::shared_ptr<PizzeriaDB> db) {
 				std::cin >> l;
 				std::cout << "Enter password: ";
 				std::cin >> p;
-				if (db->ClientIsValid(l, p)) return std::make_shared<Client>();
+				if (db->ClientIsValid(l, p)) {
+					 return std::make_shared<Client>(l, db->getClientAddress(l));
+				}
 				else {
 					system("CLS");
 					std::cout << "Wrong login or password" << std::endl;
